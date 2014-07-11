@@ -47,6 +47,7 @@
 // */
 
 #include "precomp.hpp"
+#include "opencv2/core/cvdef.h"
 #include "opencl_kernels.hpp"
 
 namespace cv
@@ -121,6 +122,34 @@ void vBinOp(const T* src1, size_t step1, const T* src2, size_t step2, T* dst, si
     }
 }
 
+template<typename T, class Op>
+void vBinNOp(const T* src1, size_t step1, const T* src2, size_t step2, T* dst, size_t step, Size sz)
+{
+    Op op;
+
+    for( ; sz.height--; src1 += step1/sizeof(src1[0]),
+        src2 += step2/sizeof(src2[0]),
+        dst += step/sizeof(dst[0]) )
+    {
+        int x = 0;
+
+#if CV_ENABLE_UNROLLED
+        for( ; x <= sz.width - 4; x += 4 )
+        {
+            T v0 = op(src1[x], src2[x]);
+            T v1 = op(src1[x+1], src2[x+1]);
+            dst[x] = v0; dst[x+1] = v1;
+            v0 = op(src1[x+2], src2[x+2]);
+            v1 = op(src1[x+3], src2[x+3]);
+            dst[x+2] = v0; dst[x+3] = v1;
+        }
+#endif
+        
+        for( ; x < sz.width; x++ )
+            dst[x] = op(src1[x], src2[x]);
+    }
+}
+
 template<typename T, class Op, class Op32>
 void vBinOp32(const T* src1, size_t step1, const T* src2, size_t step2,
               T* dst, size_t step, Size sz)
@@ -183,7 +212,34 @@ void vBinOp32(const T* src1, size_t step1, const T* src2, size_t step2,
             dst[x] = op(src1[x], src2[x]);
     }
 }
+template<typename T, class Op>
+void vBinNOp32(const T* src1, size_t step1, const T* src2, size_t step2,
+              T* dst, size_t step, Size sz)
+{
+    Op op;
 
+    for( ; sz.height--; src1 += step1/sizeof(src1[0]),
+        src2 += step2/sizeof(src2[0]),
+        dst += step/sizeof(dst[0]) )
+    {
+        int x = 0;
+
+#if CV_ENABLE_UNROLLED
+        for( ; x <= sz.width - 4; x += 4 )
+        {
+            T v0 = op(src1[x], src2[x]);
+            T v1 = op(src1[x+1], src2[x+1]);
+            dst[x] = v0; dst[x+1] = v1;
+            v0 = op(src1[x+2], src2[x+2]);
+            v1 = op(src1[x+3], src2[x+3]);
+            dst[x+2] = v0; dst[x+3] = v1;
+        }
+#endif
+
+        for( ; x < sz.width; x++ )
+            dst[x] = op(src1[x], src2[x]);
+    }
+}
 
 template<typename T, class Op, class Op64>
 void vBinOp64(const T* src1, size_t step1, const T* src2, size_t step2,
@@ -233,6 +289,33 @@ void vBinOp64(const T* src1, size_t step1, const T* src2, size_t step2,
     }
 }
 
+template<typename T, class Op>
+void vBinNOp64(const T* src1, size_t step1, const T* src2, size_t step2,
+              T* dst, size_t step, Size sz)
+{
+    Op op;
+
+    for( ; sz.height--; src1 += step1/sizeof(src1[0]),
+        src2 += step2/sizeof(src2[0]),
+        dst += step/sizeof(dst[0]) )
+    {
+        int x = 0;
+        for( ; x <= sz.width - 4; x += 4 )
+        {
+            T v0 = op(src1[x], src2[x]);
+            T v1 = op(src1[x+1], src2[x+1]);
+            dst[x] = v0; dst[x+1] = v1;
+            v0 = op(src1[x+2], src2[x+2]);
+            v1 = op(src1[x+3], src2[x+3]);
+            dst[x+2] = v0; dst[x+3] = v1;
+        }
+        
+        for( ; x < sz.width; x++ )
+            dst[x] = op(src1[x], src2[x]);
+    }
+}
+
+
 #if CV_SSE2
 
 #define FUNCTOR_LOADSTORE_CAST(name, template_arg, register_type, load_body, store_body)\
@@ -280,6 +363,9 @@ FUNCTOR_LOADSTORE_CAST(VLoadStore128,  schar, __m128i, _mm_loadu_si128, _mm_stor
 FUNCTOR_LOADSTORE_CAST(VLoadStore128, ushort, __m128i, _mm_loadu_si128, _mm_storeu_si128);
 FUNCTOR_LOADSTORE_CAST(VLoadStore128,  short, __m128i, _mm_loadu_si128, _mm_storeu_si128);
 FUNCTOR_LOADSTORE_CAST(VLoadStore128,    int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+FUNCTOR_LOADSTORE_CAST(VLoadStore128,           unsigned int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+FUNCTOR_LOADSTORE_CAST(VLoadStore128,          long long int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+FUNCTOR_LOADSTORE_CAST(VLoadStore128, unsigned long long int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
 FUNCTOR_LOADSTORE(     VLoadStore128,  float, __m128 , _mm_loadu_ps   , _mm_storeu_ps   );
 FUNCTOR_LOADSTORE(     VLoadStore128, double, __m128d, _mm_loadu_pd   , _mm_storeu_pd   );
 
@@ -289,6 +375,9 @@ FUNCTOR_LOADSTORE_CAST(VLoadStore64, ushort, __m128i, _mm_loadl_epi64, _mm_store
 FUNCTOR_LOADSTORE_CAST(VLoadStore64,  short, __m128i, _mm_loadl_epi64, _mm_storel_epi64);
 
 FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned,    int, __m128i, _mm_load_si128, _mm_store_si128);
+FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned,           unsigned int, __m128i, _mm_load_si128, _mm_store_si128);
+FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned,          long long int, __m128i, _mm_load_si128, _mm_store_si128);
+FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned, unsigned long long int, __m128i, _mm_load_si128, _mm_store_si128);
 FUNCTOR_LOADSTORE(     VLoadStore128Aligned,  float, __m128 , _mm_load_ps   , _mm_store_ps   );
 FUNCTOR_LOADSTORE(     VLoadStore128Aligned, double, __m128d, _mm_load_pd   , _mm_store_pd   );
 
@@ -298,6 +387,9 @@ FUNCTOR_CLOSURE_2arg(VAdd,  schar, return _mm_adds_epi8 (a, b));
 FUNCTOR_CLOSURE_2arg(VAdd, ushort, return _mm_adds_epu16(a, b));
 FUNCTOR_CLOSURE_2arg(VAdd,  short, return _mm_adds_epi16(a, b));
 FUNCTOR_CLOSURE_2arg(VAdd,    int, return _mm_add_epi32 (a, b));
+FUNCTOR_CLOSURE_2arg(VAdd,           unsigned int, return _mm_add_epi32 (a, b));
+FUNCTOR_CLOSURE_2arg(VAdd,          long long int, return _mm_add_epi64 (a, b));
+FUNCTOR_CLOSURE_2arg(VAdd, unsigned long long int, return _mm_add_epi64 (a, b));
 FUNCTOR_CLOSURE_2arg(VAdd,  float, return _mm_add_ps    (a, b));
 FUNCTOR_CLOSURE_2arg(VAdd, double, return _mm_add_pd    (a, b));
 
@@ -307,6 +399,9 @@ FUNCTOR_CLOSURE_2arg(VSub,  schar, return _mm_subs_epi8 (a, b));
 FUNCTOR_CLOSURE_2arg(VSub, ushort, return _mm_subs_epu16(a, b));
 FUNCTOR_CLOSURE_2arg(VSub,  short, return _mm_subs_epi16(a, b));
 FUNCTOR_CLOSURE_2arg(VSub,    int, return _mm_sub_epi32 (a, b));
+FUNCTOR_CLOSURE_2arg(VSub,           unsigned int, return _mm_sub_epi32 (a, b));
+FUNCTOR_CLOSURE_2arg(VSub,          long long int, return _mm_sub_epi64 (a, b));
+FUNCTOR_CLOSURE_2arg(VSub, unsigned long long int, return _mm_sub_epi64 (a, b));
 FUNCTOR_CLOSURE_2arg(VSub,  float, return _mm_sub_ps    (a, b));
 FUNCTOR_CLOSURE_2arg(VSub, double, return _mm_sub_pd    (a, b));
 
@@ -333,16 +428,176 @@ FUNCTOR_CLOSURE_2arg(VMax, schar,
     );
 FUNCTOR_CLOSURE_2arg(VMax, ushort, return _mm_adds_epu16(_mm_subs_epu16(a, b), b));
 FUNCTOR_CLOSURE_2arg(VMax,  short, return _mm_max_epi16(a, b));
-FUNCTOR_CLOSURE_2arg(VMax,    int,
-        __m128i m = _mm_cmpgt_epi32(b, a);
-        return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m));
-    );
+FUNCTOR_CLOSURE_2arg(VMax,                    int, __m128i m = _mm_cmpgt_epi32(b, a); return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m)));
+FUNCTOR_CLOSURE_2arg(VMax,           unsigned int, __m128i m = _mm_cmpgt_epi32(b, a); return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m)));
 FUNCTOR_CLOSURE_2arg(VMax,  float, return _mm_max_ps(a, b));
 FUNCTOR_CLOSURE_2arg(VMax, double, return _mm_max_pd(a, b));
 
 
-static unsigned int CV_DECL_ALIGNED(16) v32f_absmask[] = { 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff };
-static unsigned int CV_DECL_ALIGNED(16) v64f_absmask[] = { 0xffffffff, 0x7fffffff, 0xffffffff, 0x7fffffff };
+static unsigned int CV_DECL_ALIGNED(16) v32f_absmask[] = { static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0x7fffffff) };
+static unsigned int CV_DECL_ALIGNED(16) v64f_absmask[] = { static_cast<unsigned int>(0xffffffff), static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0xffffffff), static_cast<unsigned int>(0x7fffffff) };
+
+FUNCTOR_TEMPLATE(VAbsDiff);
+FUNCTOR_CLOSURE_2arg(VAbsDiff,  uchar,
+        return _mm_add_epi8(_mm_subs_epu8(a, b), _mm_subs_epu8(b, a));
+    );
+FUNCTOR_CLOSURE_2arg(VAbsDiff,  schar,
+        __m128i d = _mm_subs_epi8(a, b);
+        __m128i m = _mm_cmpgt_epi8(b, a);
+        return _mm_subs_epi8(_mm_xor_si128(d, m), m);
+    );
+FUNCTOR_CLOSURE_2arg(VAbsDiff, ushort,
+        return _mm_add_epi16(_mm_subs_epu16(a, b), _mm_subs_epu16(b, a));
+    );
+FUNCTOR_CLOSURE_2arg(VAbsDiff,  short,
+        __m128i M = _mm_max_epi16(a, b);
+        __m128i m = _mm_min_epi16(a, b);
+        return _mm_subs_epi16(M, m);
+    );
+FUNCTOR_CLOSURE_2arg(VAbsDiff,    int,
+        __m128i d = _mm_sub_epi32(a, b);
+        __m128i m = _mm_cmpgt_epi32(b, a);
+        return _mm_sub_epi32(_mm_xor_si128(d, m), m);
+    );
+FUNCTOR_CLOSURE_2arg(VAbsDiff,  float,
+        return _mm_and_ps(_mm_sub_ps(a,b), *(const __m128*)v32f_absmask);
+    );
+FUNCTOR_CLOSURE_2arg(VAbsDiff, double,
+        return _mm_and_pd(_mm_sub_pd(a,b), *(const __m128d*)v64f_absmask);
+    );
+
+FUNCTOR_TEMPLATE(VAnd);
+FUNCTOR_CLOSURE_2arg(VAnd, uchar, return _mm_and_si128(a, b));
+FUNCTOR_TEMPLATE(VOr);
+FUNCTOR_CLOSURE_2arg(VOr , uchar, return _mm_or_si128 (a, b));
+FUNCTOR_TEMPLATE(VXor);
+FUNCTOR_CLOSURE_2arg(VXor, uchar, return _mm_xor_si128(a, b));
+FUNCTOR_TEMPLATE(VNot);
+FUNCTOR_CLOSURE_1arg(VNot, uchar, return _mm_xor_si128(_mm_set1_epi32(-1), a));
+#endif
+
+#if CV_SSE4_2
+
+#define FUNCTOR_LOADSTORE_CAST(name, template_arg, register_type, load_body, store_body)\
+template <>                                                                                  \
+struct name<template_arg>{                                                                   \
+typedef register_type reg_type;                                                          \
+static reg_type load(const template_arg * p) { return load_body ((const reg_type *)p); } \
+static void store(template_arg * p, reg_type v) { store_body ((reg_type *)p, v); }       \
+}
+
+#define FUNCTOR_LOADSTORE(name, template_arg, register_type, load_body, store_body)\
+template <>                                                                \
+struct name<template_arg>{                                                 \
+typedef register_type reg_type;                                        \
+static reg_type load(const template_arg * p) { return load_body (p); } \
+static void store(template_arg * p, reg_type v) { store_body (p, v); } \
+}
+
+#define FUNCTOR_CLOSURE_2arg(name, template_arg, body)\
+template<>                                                                 \
+struct name<template_arg>                                                  \
+{                                                                          \
+VLoadStore128<template_arg>::reg_type operator()(                      \
+const VLoadStore128<template_arg>::reg_type & a,       \
+const VLoadStore128<template_arg>::reg_type & b) const \
+{                                                                      \
+body;                                                              \
+}                                                                      \
+}
+
+#define FUNCTOR_CLOSURE_1arg(name, template_arg, body)\
+template<>                                                                 \
+struct name<template_arg>                                                  \
+{                                                                          \
+VLoadStore128<template_arg>::reg_type operator()(                      \
+const VLoadStore128<template_arg>::reg_type & a,       \
+const VLoadStore128<template_arg>::reg_type &  ) const \
+{                                                                      \
+body;                                                              \
+}                                                                      \
+}
+
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128,  uchar, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128,  schar, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128, ushort, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128,  short, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128,                    int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128,           unsigned int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128,          long long int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128, unsigned long long int, __m128i, _mm_loadu_si128, _mm_storeu_si128);
+    FUNCTOR_LOADSTORE(     VLoadStore128,  float, __m128 , _mm_loadu_ps   , _mm_storeu_ps   );
+    FUNCTOR_LOADSTORE(     VLoadStore128, double, __m128d, _mm_loadu_pd   , _mm_storeu_pd   );
+
+    FUNCTOR_LOADSTORE_CAST(VLoadStore64,  uchar, __m128i, _mm_loadl_epi64, _mm_storel_epi64);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore64,  schar, __m128i, _mm_loadl_epi64, _mm_storel_epi64);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore64, ushort, __m128i, _mm_loadl_epi64, _mm_storel_epi64);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore64,  short, __m128i, _mm_loadl_epi64, _mm_storel_epi64);
+
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned,                    int, __m128i, _mm_load_si128, _mm_store_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned,           unsigned int, __m128i, _mm_load_si128, _mm_store_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned,          long long int, __m128i, _mm_load_si128, _mm_store_si128);
+    FUNCTOR_LOADSTORE_CAST(VLoadStore128Aligned, unsigned long long int, __m128i, _mm_load_si128, _mm_store_si128);
+    FUNCTOR_LOADSTORE(     VLoadStore128Aligned,  float, __m128 , _mm_load_ps   , _mm_store_ps   );
+    FUNCTOR_LOADSTORE(     VLoadStore128Aligned, double, __m128d, _mm_load_pd   , _mm_store_pd   );
+
+    FUNCTOR_TEMPLATE(VAdd);
+    FUNCTOR_CLOSURE_2arg(VAdd,  uchar, return _mm_adds_epu8 (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd,  schar, return _mm_adds_epi8 (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd, ushort, return _mm_adds_epu16(a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd,  short, return _mm_adds_epi16(a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd,                    int, return _mm_add_epi32 (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd,           unsigned int, return _mm_add_epi32 (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd,          long long int, return _mm_add_epi64 (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd, unsigned long long int, return _mm_add_epi64 (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd,  float, return _mm_add_ps    (a, b));
+    FUNCTOR_CLOSURE_2arg(VAdd, double, return _mm_add_pd    (a, b));
+
+    FUNCTOR_TEMPLATE(VSub);
+    FUNCTOR_CLOSURE_2arg(VSub,  uchar, return _mm_subs_epu8 (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub,  schar, return _mm_subs_epi8 (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub, ushort, return _mm_subs_epu16(a, b));
+    FUNCTOR_CLOSURE_2arg(VSub,  short, return _mm_subs_epi16(a, b));
+    FUNCTOR_CLOSURE_2arg(VSub,                    int, return _mm_sub_epi32 (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub,           unsigned int, return _mm_sub_epi32 (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub,          long long int, return _mm_sub_epi64 (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub, unsigned long long int, return _mm_sub_epi64 (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub,  float, return _mm_sub_ps    (a, b));
+    FUNCTOR_CLOSURE_2arg(VSub, double, return _mm_sub_pd    (a, b));
+
+    FUNCTOR_TEMPLATE(VMin);
+    FUNCTOR_CLOSURE_2arg(VMin, uchar, return _mm_min_epu8(a, b));
+    FUNCTOR_CLOSURE_2arg(VMin, schar,
+                         __m128i m = _mm_cmpgt_epi8(a, b);
+                         return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m));
+                         );
+    FUNCTOR_CLOSURE_2arg(VMin, ushort, return _mm_subs_epu16(a, _mm_subs_epu16(a, b)));
+    FUNCTOR_CLOSURE_2arg(VMin,  short, return _mm_min_epi16(a, b));
+    FUNCTOR_CLOSURE_2arg(VMin,    int,
+                         __m128i m = _mm_cmpgt_epi32(a, b);
+                         return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m));
+                         );
+    FUNCTOR_CLOSURE_2arg(VMin,  float, return _mm_min_ps(a, b));
+    FUNCTOR_CLOSURE_2arg(VMin, double, return _mm_min_pd(a, b));
+
+    FUNCTOR_TEMPLATE(VMax);
+    FUNCTOR_CLOSURE_2arg(VMax, uchar, return _mm_max_epu8(a, b));
+    FUNCTOR_CLOSURE_2arg(VMax, schar,
+                         __m128i m = _mm_cmpgt_epi8(b, a);
+        return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m));
+    );
+    FUNCTOR_CLOSURE_2arg(VMax, ushort, return _mm_adds_epu16(_mm_subs_epu16(a, b), b));
+    FUNCTOR_CLOSURE_2arg(VMax,  short, return _mm_max_epi16(a, b));
+    FUNCTOR_CLOSURE_2arg(VMax,                    int, __m128i m = _mm_cmpgt_epi32(b, a); return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m)));
+    FUNCTOR_CLOSURE_2arg(VMax,           unsigned int, __m128i m = _mm_cmpgt_epi32(b, a); return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m)));
+    FUNCTOR_CLOSURE_2arg(VMax,          long long int, __m128i m = _mm_cmpgt_epi64(b, a); return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m)));
+    FUNCTOR_CLOSURE_2arg(VMax, unsigned long long int, __m128i m = _mm_cmpgt_epi64(b, a); return _mm_xor_si128(a, _mm_and_si128(_mm_xor_si128(a, b), m)));
+FUNCTOR_CLOSURE_2arg(VMax,  float, return _mm_max_ps(a, b));
+FUNCTOR_CLOSURE_2arg(VMax, double, return _mm_max_pd(a, b));
+
+
+    static unsigned int CV_DECL_ALIGNED(16) v32f_absmask[] = { static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0x7fffffff) };
+    static unsigned int CV_DECL_ALIGNED(16) v64f_absmask[] = { static_cast<unsigned int>(0xffffffff), static_cast<unsigned int>(0x7fffffff), static_cast<unsigned int>(0xffffffff), static_cast<unsigned int>(0x7fffffff) };
 
 FUNCTOR_TEMPLATE(VAbsDiff);
 FUNCTOR_CLOSURE_2arg(VAbsDiff,  uchar,
@@ -384,8 +639,25 @@ FUNCTOR_CLOSURE_1arg(VNot, uchar, return _mm_xor_si128(_mm_set1_epi32(-1), a));
 #endif
 
 #if CV_SSE2
+#define SIMD_8U 1
+#define SIMD_16U 1
+#define SIMD_32U 0
+#define SIMD_64U 0
+#define SIMD_8S 1
+#define SIMD_16S 1
+#define SIMD_32S 1
+#define SIMD_64S 0
+#define SIMD_32F 1
+#define SIMD_64F 1
+
 #define IF_SIMD(op) op
-#else
+#endif
+
+#if CV_SSE4_2
+#define IF_SIMD(op) op
+#endif
+
+#if !CV_SSE2 && !CV_SSE4_2
 #define IF_SIMD(op) NOP
 #endif
 
@@ -466,14 +738,23 @@ static void add8u( const uchar* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
+#if SIMD_8U
     (vBinOp<uchar, OpAdd<uchar>, IF_SIMD(VAdd<uchar>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<uchar, OpAdd<uchar> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void add8s( const schar* src1, size_t step1,
                    const schar* src2, size_t step2,
                    schar* dst, size_t step, Size sz, void* )
 {
+#if SIMD_8S
     vBinOp<schar, OpAdd<schar>, IF_SIMD(VAdd<schar>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+     (vBinNOp<schar, OpAdd<schar> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+
 }
 
 static void add16u( const ushort* src1, size_t step1,
@@ -486,7 +767,11 @@ static void add16u( const ushort* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<ushort, OpAdd<ushort>, IF_SIMD(VAdd<ushort>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_16U
+    vBinOp<CV_16U_TYPE, OpAdd<CV_16U_TYPE>, IF_SIMD(VAdd<CV_16U_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+    (vBinNOp<CV_16U_TYPE, OpAdd<CV_16U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void add16s( const short* src1, size_t step1,
@@ -499,15 +784,59 @@ static void add16s( const short* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<short, OpAdd<short>, IF_SIMD(VAdd<short>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_16S
+    vBinOp<CV_16S_TYPE, OpAdd<CV_16S_TYPE>, IF_SIMD(VAdd<CV_16S_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+    (vBinNOp<CV_16S_TYPE, OpAdd<CV_16S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void add32u( const unsigned int* src1, size_t step1,
+                   const unsigned int* src2, size_t step2,
+                   unsigned int* dst, size_t step, Size sz, void* )
+{
+
+#if SIMD_32U
+    vBinOp32<CV_32U_TYPE, OpAdd<CV_32U_TYPE>, IF_SIMD32u(VAdd<CV_32U_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+    (vBinNOp32<CV_32U_TYPE, OpAdd<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void add32s( const int* src1, size_t step1,
                     const int* src2, size_t step2,
                     int* dst, size_t step, Size sz, void* )
 {
-    vBinOp32<int, OpAdd<int>, IF_SIMD(VAdd<int>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32S
+        vBinOp32<CV_32S_TYPE, OpAdd<CV_32S_TYPE>, IF_SIMD(VAdd<CV_32S_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+        (vBinNOp32<CV_32S_TYPE, OpAdd<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
+
+
+static void add64u( const unsigned long long int* src1, size_t step1,
+                   const unsigned long long int* src2, size_t step2,
+                   unsigned long long int* dst, size_t step, Size sz, void* )
+    {
+#if SIMD_64U
+        vBinOp64<CV_64U_TYPE, OpAdd<CV_64U_TYPE>, IF_SIMD(VAdd<CV_64U_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+        (vBinNOp64<CV_64U_TYPE, OpAdd<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void add64s( const long long int* src1, size_t step1,
+                   const long long int* src2, size_t step2,
+                   long long int* dst, size_t step, Size sz, void* )
+    {
+#if SIMD_64S
+        vBinOp64<CV_64S_TYPE, OpAdd<CV_64S_TYPE>, IF_SIMD(VAdd<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+        vBinNOp64<CV_64S_TYPE, OpAdd<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz);
+#endif
+}
+
 
 static void add32f( const float* src1, size_t step1,
                     const float* src2, size_t step2,
@@ -519,14 +848,22 @@ static void add32f( const float* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp32<float, OpAdd<float>, IF_SIMD(VAdd<float>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_32F
+    vBinOp32<CV_32F_TYPE, OpAdd<CV_32F_TYPE>, IF_SIMD(VAdd<CV_32F_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+    vBinNOp32<CV_32F_TYPE, OpAdd<CV_32F_TYPE> >(src1, step1, src2, step2, dst, step, sz);
+#endif
 }
 
 static void add64f( const double* src1, size_t step1,
                     const double* src2, size_t step2,
                     double* dst, size_t step, Size sz, void* )
 {
-    vBinOp64<double, OpAdd<double>, IF_SIMD(VAdd<double>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_64F
+        vBinOp64<CV_64F_TYPE, OpAdd<CV_64F_TYPE>, IF_SIMD(VAdd<CV_64F_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+        vBinNOp64<CV_64F_TYPE, OpAdd<CV_64F_TYPE> >(src1, step1, src2, step2, dst, step, sz);
+#endif
 }
 
 static void sub8u( const uchar* src1, size_t step1,
@@ -539,14 +876,22 @@ static void sub8u( const uchar* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<uchar, OpSub<uchar>, IF_SIMD(VSub<uchar>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_8U
+    vBinOp<CV_8U_TYPE, OpSub<CV_8U_TYPE>, IF_SIMD(VSub<CV_8U_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+    (vBinNOp<CV_8U_TYPE, OpSub<CV_8U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void sub8s( const schar* src1, size_t step1,
                    const schar* src2, size_t step2,
                    schar* dst, size_t step, Size sz, void* )
 {
-    vBinOp<schar, OpSub<schar>, IF_SIMD(VSub<schar>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_8S
+        vBinOp<CV_8S_TYPE, OpSub<CV_8S_TYPE>, IF_SIMD(VSub<CV_8S_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
+#else
+        (vBinNOp<CV_8S_TYPE, OpSub<CV_8S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void sub16u( const ushort* src1, size_t step1,
@@ -559,7 +904,11 @@ static void sub16u( const ushort* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<ushort, OpSub<ushort>, IF_SIMD(VSub<ushort>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_16U
+    (vBinOp<CV_16U_TYPE, OpSub<CV_16U_TYPE>, IF_SIMD(VSub<CV_16U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16U_TYPE, OpSub<CV_16U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void sub16s( const short* src1, size_t step1,
@@ -572,14 +921,55 @@ static void sub16s( const short* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<short, OpSub<short>, IF_SIMD(VSub<short>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_16S
+    ( vBinOp<CV_16S_TYPE, OpSub<CV_16S_TYPE>, IF_SIMD(VSub<CV_16S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16S_TYPE, OpSub<CV_16S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void sub32u( const unsigned int* src1, size_t step1,
+                   const unsigned int* src2, size_t step2,
+                   unsigned int* dst, size_t step, Size sz, void* )
+{
+#if SIMD_32U
+    ( vBinOp32<CV_32U_TYPE, OpSub<CV_32U_TYPE>, IF_SIMD(VSub<CV_32U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32U_TYPE, OpSub<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void sub32s( const int* src1, size_t step1,
                     const int* src2, size_t step2,
                     int* dst, size_t step, Size sz, void* )
 {
-    vBinOp32<int, OpSub<int>, IF_SIMD(VSub<int>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32S
+    (vBinOp32<CV_32S_TYPE, OpSub<CV_32S_TYPE>, IF_SIMD(VSub<CV_32S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinOp32<CV_32S_TYPE, OpSub<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void sub64u( const unsigned long long int* src1, size_t step1,
+                    const unsigned long long int* src2, size_t step2,
+                    unsigned long long int* dst, size_t step, Size sz, void* )
+{
+#if SIMD_64U
+    (vBinOp64<CV_64U_TYPE, OpSub<CV_64U_TYPE>, IF_SIMD(VSub<CV_64U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64U_TYPE, OpSub<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void sub64s( const long long int* src1, size_t step1,
+                    const long long int* src2, size_t step2,
+                    long long int* dst, size_t step, Size sz, void* )
+{
+#if SIMD_64S
+    (vBinOp64<CV_64S_TYPE, OpSub<CV_64S_TYPE>, IF_SIMD(VSub<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64S_TYPE, OpSub<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void sub32f( const float* src1, size_t step1,
@@ -592,14 +982,22 @@ static void sub32f( const float* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp32<float, OpSub<float>, IF_SIMD(VSub<float>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_32F
+    (vBinOp32<CV_32F_TYPE, OpSub<CV_32F_TYPE>, IF_SIMD(VSub<CV_32F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32F_TYPE, OpSub<CV_32F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void sub64f( const double* src1, size_t step1,
                     const double* src2, size_t step2,
                     double* dst, size_t step, Size sz, void* )
 {
-    vBinOp64<double, OpSub<double>, IF_SIMD(VSub<double>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_64F
+    (vBinOp64<CV_64F_TYPE, OpSub<CV_64F_TYPE>, IF_SIMD(VSub<CV_64F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64F_TYPE, OpSub<CV_64F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 template<> inline uchar OpMin<uchar>::operator ()(uchar a, uchar b) const { return CV_MIN_8U(a, b); }
@@ -627,14 +1025,22 @@ static void max8u( const uchar* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp<uchar, OpMax<uchar>, IF_SIMD(VMax<uchar>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_8U
+    ( vBinOp<CV_8U_TYPE, OpMax<CV_8U_TYPE>, IF_SIMD(VMax<CV_8U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_8U_TYPE, OpMax<CV_8U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void max8s( const schar* src1, size_t step1,
                    const schar* src2, size_t step2,
                    schar* dst, size_t step, Size sz, void* )
 {
-    vBinOp<schar, OpMax<schar>, IF_SIMD(VMax<schar>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_8S
+        ( vBinOp<CV_8S_TYPE, OpMax<CV_8S_TYPE>, IF_SIMD(VMax<CV_8S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+        (vBinNOp<CV_8S_TYPE, OpMax<CV_8S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void max16u( const ushort* src1, size_t step1,
@@ -659,22 +1065,69 @@ static void max16u( const ushort* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp<ushort, OpMax<ushort>, IF_SIMD(VMax<ushort>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_16U
+    ( vBinOp<CV_16U_TYPE, OpMax<CV_16U_TYPE>, IF_SIMD(VMax<CV_16U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16U_TYPE, OpMax<CV_16U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void max16s( const short* src1, size_t step1,
                     const short* src2, size_t step2,
                     short* dst, size_t step, Size sz, void* )
 {
-    vBinOp<short, OpMax<short>, IF_SIMD(VMax<short>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_16S
+    ( vBinOp<CV_16S_TYPE, OpMax<CV_16S_TYPE>, IF_SIMD(VMax<CV_16S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16S_TYPE, OpMax<CV_16S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
-static void max32s( const int* src1, size_t step1,
-                    const int* src2, size_t step2,
-                    int* dst, size_t step, Size sz, void* )
+
+static void max32u( const CV_32U_TYPE * src1, size_t step1,
+                    const CV_32U_TYPE * src2, size_t step2,
+                    CV_32U_TYPE * dst, size_t step, Size sz, void* )
 {
-    vBinOp32<int, OpMax<int>, IF_SIMD(VMax<int>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32U
+    ( vBinOp32<CV_32U_TYPE, OpMax<CV_32U_TYPE>, IF_SIMD(VMax<CV_32U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32U_TYPE, OpMax<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
+
+static void max32s( const CV_32S_TYPE * src1, size_t step1,
+                    const CV_32S_TYPE * src2, size_t step2,
+                    CV_32S_TYPE * dst, size_t step, Size sz, void* )
+{
+#if SIMD_32S
+    ( vBinOp32<CV_32S_TYPE, OpMax<CV_32S_TYPE>, IF_SIMD(VMax<CV_32S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32S_TYPE, OpMax<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void max64u( const CV_64U_TYPE * src1, size_t step1,
+                    const CV_64U_TYPE * src2, size_t step2,
+                    CV_64U_TYPE * dst, size_t step, Size sz, void* )
+{
+#if SIMD_64U
+    ( vBinOp64<CV_64U_TYPE, OpMax<CV_64U_TYPE>, IF_SIMD(VMax<CV_64U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64U_TYPE, OpMax<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void max64s( const CV_64S_TYPE * src1, size_t step1,
+                    const CV_64S_TYPE * src2, size_t step2,
+                    CV_64S_TYPE * dst, size_t step, Size sz, void* )
+{
+#if SIMD_64S
+    ( vBinOp64<CV_64S_TYPE, OpMax<CV_64S_TYPE>, IF_SIMD(VMax<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64S_TYPE, OpMax<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
 
 static void max32f( const float* src1, size_t step1,
                     const float* src2, size_t step2,
@@ -698,7 +1151,11 @@ static void max32f( const float* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp32<float, OpMax<float>, IF_SIMD(VMax<float>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32F
+    ( vBinOp32<CV_32F_TYPE, OpMax<CV_32F_TYPE>, IF_SIMD(VMax<CV_32F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32F_TYPE, OpMax<CV_32F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void max64f( const double* src1, size_t step1,
@@ -723,7 +1180,11 @@ static void max64f( const double* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp64<double, OpMax<double>, IF_SIMD(VMax<double>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_64F
+    ( vBinOp64<CV_64F_TYPE, OpMax<CV_64F_TYPE>, IF_SIMD(VMax<CV_64F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64F_TYPE, OpMax<CV_64F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void min8u( const uchar* src1, size_t step1,
@@ -748,14 +1209,22 @@ static void min8u( const uchar* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp<uchar, OpMin<uchar>, IF_SIMD(VMin<uchar>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_8U
+    ( vBinOp<CV_8U_TYPE, OpMin<CV_8U_TYPE>, IF_SIMD(VMin<CV_8U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_8U_TYPE, OpMin<CV_8U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void min8s( const schar* src1, size_t step1,
                    const schar* src2, size_t step2,
                    schar* dst, size_t step, Size sz, void* )
 {
-    vBinOp<schar, OpMin<schar>, IF_SIMD(VMin<schar>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_8S
+    ( vBinOp<CV_8S_TYPE, OpMin<CV_8S_TYPE>, IF_SIMD(VMin<CV_8S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_8S_TYPE, OpMin<CV_8S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void min16u( const ushort* src1, size_t step1,
@@ -780,21 +1249,66 @@ static void min16u( const ushort* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp<ushort, OpMin<ushort>, IF_SIMD(VMin<ushort>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_16U
+    ( vBinOp<CV_16U_TYPE, OpMin<CV_16U_TYPE>, IF_SIMD(VMin<CV_16U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16U_TYPE, OpMin<CV_16U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void min16s( const short* src1, size_t step1,
                     const short* src2, size_t step2,
                     short* dst, size_t step, Size sz, void* )
 {
-    vBinOp<short, OpMin<short>, IF_SIMD(VMin<short>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_16S
+    ( vBinOp<CV_16S_TYPE, OpMin<CV_16S_TYPE>, IF_SIMD(VMin<CV_16S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16S_TYPE, OpMin<CV_16S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
-static void min32s( const int* src1, size_t step1,
-                    const int* src2, size_t step2,
-                    int* dst, size_t step, Size sz, void* )
+static void min32u( const CV_32U_TYPE * src1, size_t step1,
+                   const CV_32U_TYPE * src2, size_t step2,
+                   CV_32U_TYPE * dst, size_t step, Size sz, void* )
 {
-    vBinOp32<int, OpMin<int>, IF_SIMD(VMin<int>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32U
+    ( vBinOp32<CV_32U_TYPE, OpMin<CV_32U_TYPE>, IF_SIMD(VMin<CV_32U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32U_TYPE, OpMin<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void min32s( const CV_32S_TYPE * src1, size_t step1,
+                   const CV_32S_TYPE * src2, size_t step2,
+                   CV_32S_TYPE * dst, size_t step, Size sz, void* )
+{
+#if SIMD_32S
+    ( vBinOp32<CV_32S_TYPE, OpMin<CV_32S_TYPE>, IF_SIMD(VMin<CV_32S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32S_TYPE, OpMin<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void min64u( const CV_64U_TYPE * src1, size_t step1,
+                    const CV_64U_TYPE * src2, size_t step2,
+                    CV_64U_TYPE * dst, size_t step, Size sz, void* )
+{
+#if SIMD_64U
+    ( vBinOp64<CV_64U_TYPE, OpMin<CV_64U_TYPE>, IF_SIMD(VMin<CV_64U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64U_TYPE, OpMin<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void min64s( const CV_64S_TYPE * src1, size_t step1,
+                    const CV_64S_TYPE * src2, size_t step2,
+                    CV_64S_TYPE * dst, size_t step, Size sz, void* )
+{
+#if SIMD_64S
+    ( vBinOp64<CV_64S_TYPE, OpMin<CV_64S_TYPE>, IF_SIMD(VMin<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64S_TYPE, OpMin<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void min32f( const float* src1, size_t step1,
@@ -819,7 +1333,11 @@ static void min32f( const float* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp32<float, OpMin<float>, IF_SIMD(VMin<float>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32F
+    ( vBinOp32<CV_32F_TYPE, OpMin<CV_32F_TYPE>, IF_SIMD(VMin<CV_32F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32F_TYPE, OpMin<CV_32F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void min64f( const double* src1, size_t step1,
@@ -844,7 +1362,11 @@ static void min64f( const double* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    vBinOp64<double, OpMin<double>, IF_SIMD(VMin<double>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_64F
+    ( vBinOp64<CV_64F_TYPE, OpMin<CV_64F_TYPE>, IF_SIMD(VMin<CV_64F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64F_TYPE, OpMin<CV_64F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void absdiff8u( const uchar* src1, size_t step1,
@@ -857,14 +1379,22 @@ static void absdiff8u( const uchar* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<uchar, OpAbsDiff<uchar>, IF_SIMD(VAbsDiff<uchar>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_8U
+    ( vBinOp<CV_8U_TYPE, OpAbsDiff<CV_8U_TYPE>, IF_SIMD(VAbsDiff<CV_8U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_8U_TYPE, OpAbsDiff<CV_8U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void absdiff8s( const schar* src1, size_t step1,
                        const schar* src2, size_t step2,
                        schar* dst, size_t step, Size sz, void* )
 {
-    vBinOp<schar, OpAbsDiff<schar>, IF_SIMD(VAbsDiff<schar>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_8S
+    ( vBinOp<CV_8S_TYPE, OpAbsDiff<CV_8S_TYPE>, IF_SIMD(VAbsDiff<CV_8S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_8S_TYPE, OpAbsDiff<CV_8S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void absdiff16u( const ushort* src1, size_t step1,
@@ -877,21 +1407,67 @@ static void absdiff16u( const ushort* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp<ushort, OpAbsDiff<ushort>, IF_SIMD(VAbsDiff<ushort>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_16U
+    ( vBinOp<CV_16U_TYPE, OpAbsDiff<CV_16U_TYPE>, IF_SIMD(VAbsDiff<CV_16U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16U_TYPE, OpAbsDiff<CV_16U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void absdiff16s( const short* src1, size_t step1,
                         const short* src2, size_t step2,
                         short* dst, size_t step, Size sz, void* )
 {
-    vBinOp<short, OpAbsDiff<short>, IF_SIMD(VAbsDiff<short>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_16S
+    ( vBinOp<CV_16S_TYPE, OpAbsDiff<CV_16S_TYPE>, IF_SIMD(VAbsDiff<CV_16S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp<CV_16S_TYPE, OpAbsDiff<CV_16S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
-static void absdiff32s( const int* src1, size_t step1,
-                        const int* src2, size_t step2,
-                        int* dst, size_t step, Size sz, void* )
+static void absdiff32u( const CV_32U_TYPE * src1, size_t step1,
+                        const CV_32U_TYPE * src2, size_t step2,
+                              CV_32U_TYPE * dst,  size_t step, Size sz, void* )
 {
-    vBinOp32<int, OpAbsDiff<int>, IF_SIMD(VAbsDiff<int>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_32U
+    ( vBinOp32<CV_32U_TYPE, OpAbsDiff<CV_32U_TYPE>, IF_SIMD(VAbsDiff<CV_32U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32U_TYPE, OpAbsDiff<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void absdiff32s( const CV_32S_TYPE * src1, size_t step1,
+                        const CV_32S_TYPE * src2, size_t step2,
+                              CV_32S_TYPE * dst,  size_t step, Size sz, void* )
+{
+#if SIMD_32S
+    ( vBinOp32<CV_32S_TYPE, OpAbsDiff<CV_32S_TYPE>, IF_SIMD(VAbsDiff<CV_32S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32S_TYPE, OpAbsDiff<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void absdiff64u( const CV_64U_TYPE * src1, size_t step1,
+                        const CV_64U_TYPE * src2, size_t step2,
+                              CV_64U_TYPE * dst,  size_t step, Size sz, void* )
+{
+#if SIMD_64U
+    ( vBinOp64<CV_64U_TYPE, OpAbsDiff<CV_64U_TYPE>, IF_SIMD(VAbsDiff<CV_64U_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64U_TYPE, OpAbsDiff<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
+}
+
+static void absdiff64s( const CV_64S_TYPE * src1, size_t step1,
+                        const CV_64S_TYPE * src2, size_t step2,
+                              CV_64S_TYPE * dst,  size_t step, Size sz, void* )
+{
+
+#if SIMD_64S
+    ( vBinOp64<CV_64S_TYPE, OpAbsDiff<CV_64S_TYPE>, IF_SIMD(VAbsDiff<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64S_TYPE, OpAbsDiff<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void absdiff32f( const float* src1, size_t step1,
@@ -904,14 +1480,22 @@ static void absdiff32f( const float* src1, size_t step1,
         return;
     setIppErrorStatus();
 #endif
-    (vBinOp32<float, OpAbsDiff<float>, IF_SIMD(VAbsDiff<float>)>(src1, step1, src2, step2, dst, step, sz));
+#if SIMD_32F
+    ( vBinOp32<CV_32F_TYPE, OpAbsDiff<CV_32F_TYPE>, IF_SIMD(VAbsDiff<CV_32F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp32<CV_32F_TYPE, OpAbsDiff<CV_32F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 static void absdiff64f( const double* src1, size_t step1,
                         const double* src2, size_t step2,
                         double* dst, size_t step, Size sz, void* )
 {
-    vBinOp64<double, OpAbsDiff<double>, IF_SIMD(VAbsDiff<double>)>(src1, step1, src2, step2, dst, step, sz);
+#if SIMD_64F
+    ( vBinOp64<CV_64F_TYPE, OpAbsDiff<CV_64F_TYPE>, IF_SIMD(VAbsDiff<CV_64F_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
+#else
+    (vBinNOp64<CV_64F_TYPE, OpAbsDiff<CV_64F_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+#endif
 }
 
 
@@ -1070,7 +1654,7 @@ static bool ocl_binary_op(InputArray _src1, InputArray _src2, OutputArray _dst,
             k.args(src1arg, src2arg, maskarg, dstarg);
     }
 
-    size_t globalsize[] = { src1.cols * cn / kercn, (src1.rows + rowsPerWI - 1) / rowsPerWI };
+    size_t globalsize[] = { static_cast<size_t>(src1.cols * cn / kercn), static_cast<size_t>((src1.rows + rowsPerWI - 1) / rowsPerWI) };
     return k.run(2, globalsize, 0, false);
 }
 
@@ -1254,13 +1838,14 @@ static void binary_op( InputArray _src1, InputArray _src2, OutputArray _dst,
 static BinaryFunc* getMaxTab()
 {
     static BinaryFunc maxTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(max8u), (BinaryFunc)GET_OPTIMIZED(max8s),
-        (BinaryFunc)GET_OPTIMIZED(max16u), (BinaryFunc)GET_OPTIMIZED(max16s),
-        (BinaryFunc)GET_OPTIMIZED(max32s),
-        (BinaryFunc)GET_OPTIMIZED(max32f), (BinaryFunc)max64f,
-        0
-    };
+    TYPE_TAB_ORDER( \
+        (BinaryFunc)GET_OPTIMIZED(max8u),  (BinaryFunc)GET_OPTIMIZED(max8s), \
+        (BinaryFunc)GET_OPTIMIZED(max16u), (BinaryFunc)GET_OPTIMIZED(max16s), \
+        (BinaryFunc)GET_OPTIMIZED(max32u), (BinaryFunc)GET_OPTIMIZED(max32s), \
+        (BinaryFunc)GET_OPTIMIZED(max64u), (BinaryFunc)GET_OPTIMIZED(max64s), \
+        (BinaryFunc)GET_OPTIMIZED(max32f), (BinaryFunc)(max64f), \
+        0, 0, 0, 0 \
+        );
 
     return maxTab;
 }
@@ -1268,18 +1853,19 @@ static BinaryFunc* getMaxTab()
 static BinaryFunc* getMinTab()
 {
     static BinaryFunc minTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(min8u), (BinaryFunc)GET_OPTIMIZED(min8s),
-        (BinaryFunc)GET_OPTIMIZED(min16u), (BinaryFunc)GET_OPTIMIZED(min16s),
-        (BinaryFunc)GET_OPTIMIZED(min32s),
-        (BinaryFunc)GET_OPTIMIZED(min32f), (BinaryFunc)min64f,
-        0
-    };
+    TYPE_TAB_ORDER( \
+        (BinaryFunc)GET_OPTIMIZED(min8u),  (BinaryFunc)GET_OPTIMIZED(min8s), \
+        (BinaryFunc)GET_OPTIMIZED(min16u), (BinaryFunc)GET_OPTIMIZED(min16s), \
+        (BinaryFunc)GET_OPTIMIZED(min32u), (BinaryFunc)GET_OPTIMIZED(min32s), \
+        (BinaryFunc)GET_OPTIMIZED(min64u), (BinaryFunc)GET_OPTIMIZED(min64s), \
+        (BinaryFunc)GET_OPTIMIZED(min32f), (BinaryFunc)(min64f), \
+        0, 0, 0, 0 \
+        );
 
     return minTab;
 }
 
-}
+} // end namespace cv
 
 void cv::bitwise_and(InputArray a, InputArray b, OutputArray c, InputArray mask)
 {
@@ -1483,7 +2069,7 @@ static bool ocl_arithm_op(InputArray _src1, InputArray _src2, OutputArray _dst,
             k.args(src1arg, src2arg, maskarg, dstarg);
     }
 
-    size_t globalsize[] = { src1.cols * cn / kercn, (src1.rows + rowsPerWI - 1) / rowsPerWI };
+    size_t globalsize[] = { static_cast<size_t>(src1.cols * cn / kercn), static_cast<size_t>((src1.rows + rowsPerWI - 1) / rowsPerWI) };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -1771,13 +2357,14 @@ static void arithm_op(InputArray _src1, InputArray _src2, OutputArray _dst,
 static BinaryFunc* getAddTab()
 {
     static BinaryFunc addTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(add8u), (BinaryFunc)GET_OPTIMIZED(add8s),
-        (BinaryFunc)GET_OPTIMIZED(add16u), (BinaryFunc)GET_OPTIMIZED(add16s),
-        (BinaryFunc)GET_OPTIMIZED(add32s),
-        (BinaryFunc)GET_OPTIMIZED(add32f), (BinaryFunc)add64f,
-        0
-    };
+    TYPE_TAB_ORDER( \
+        (BinaryFunc)GET_OPTIMIZED(add8u),  (BinaryFunc)GET_OPTIMIZED(add8s),  \
+        (BinaryFunc)GET_OPTIMIZED(add16u), (BinaryFunc)GET_OPTIMIZED(add16s), \
+        (BinaryFunc)GET_OPTIMIZED(add32u), (BinaryFunc)GET_OPTIMIZED(add32s), \
+        (BinaryFunc)GET_OPTIMIZED(add64u), (BinaryFunc)GET_OPTIMIZED(add64s), \
+        (BinaryFunc)GET_OPTIMIZED(add32f), (BinaryFunc)add64f, \
+        0, 0, 0, 0 \
+    );
 
     return addTab;
 }
@@ -1785,13 +2372,14 @@ static BinaryFunc* getAddTab()
 static BinaryFunc* getSubTab()
 {
     static BinaryFunc subTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(sub8u), (BinaryFunc)GET_OPTIMIZED(sub8s),
-        (BinaryFunc)GET_OPTIMIZED(sub16u), (BinaryFunc)GET_OPTIMIZED(sub16s),
-        (BinaryFunc)GET_OPTIMIZED(sub32s),
-        (BinaryFunc)GET_OPTIMIZED(sub32f), (BinaryFunc)sub64f,
-        0
-    };
+    TYPE_TAB_ORDER(
+        (BinaryFunc)GET_OPTIMIZED(sub8u),  (BinaryFunc)GET_OPTIMIZED(sub8s), \
+        (BinaryFunc)GET_OPTIMIZED(sub16u), (BinaryFunc)GET_OPTIMIZED(sub16s), \
+        (BinaryFunc)GET_OPTIMIZED(sub32u), (BinaryFunc)GET_OPTIMIZED(sub32s), \
+        (BinaryFunc)GET_OPTIMIZED(sub64u), (BinaryFunc)GET_OPTIMIZED(sub64s), \
+        (BinaryFunc)GET_OPTIMIZED(sub32f), (BinaryFunc)sub64f, \
+        0, 0, 0, 0 \
+    );
 
     return subTab;
 }
@@ -1799,13 +2387,14 @@ static BinaryFunc* getSubTab()
 static BinaryFunc* getAbsDiffTab()
 {
     static BinaryFunc absDiffTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(absdiff8u), (BinaryFunc)GET_OPTIMIZED(absdiff8s),
-        (BinaryFunc)GET_OPTIMIZED(absdiff16u), (BinaryFunc)GET_OPTIMIZED(absdiff16s),
-        (BinaryFunc)GET_OPTIMIZED(absdiff32s),
-        (BinaryFunc)GET_OPTIMIZED(absdiff32f), (BinaryFunc)absdiff64f,
-        0
-    };
+    TYPE_TAB_ORDER( \
+    (BinaryFunc)GET_OPTIMIZED(absdiff8u),  (BinaryFunc)GET_OPTIMIZED(absdiff8s), \
+    (BinaryFunc)GET_OPTIMIZED(absdiff16u), (BinaryFunc)GET_OPTIMIZED(absdiff16s),\
+    (BinaryFunc)GET_OPTIMIZED(absdiff32u), (BinaryFunc)GET_OPTIMIZED(absdiff32s),\
+    (BinaryFunc)GET_OPTIMIZED(absdiff64u), (BinaryFunc)GET_OPTIMIZED(absdiff64s),\
+    (BinaryFunc)GET_OPTIMIZED(absdiff32f), (BinaryFunc)absdiff64f, \
+    0, 0, 0, 0 \
+);
 
     return absDiffTab;
 }
@@ -2087,8 +2676,26 @@ static void mul16s( const short* src1, size_t step1, const short* src2, size_t s
     mul_(src1, step1, src2, step2, dst, step, sz, fscale);
 }
 
+static void mul32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
+                   unsigned int* dst, size_t step, Size sz, void* scale)
+{
+    mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
 static void mul32s( const int* src1, size_t step1, const int* src2, size_t step2,
                     int* dst, size_t step, Size sz, void* scale)
+{
+    mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
+static void mul64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
+                   unsigned long long int* dst, size_t step, Size sz, void* scale)
+{
+    mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
+static void mul64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
+                   long long int* dst, size_t step, Size sz, void* scale)
 {
     mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
@@ -2141,8 +2748,26 @@ static void div16s( const short* src1, size_t step1, const short* src2, size_t s
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+static void div32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
+                   unsigned int* dst, size_t step, Size sz, void* scale)
+{
+    div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
 static void div32s( const int* src1, size_t step1, const int* src2, size_t step2,
                     int* dst, size_t step, Size sz, void* scale)
+{
+    div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
+static void div64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
+                   unsigned long long int* dst, size_t step, Size sz, void* scale)
+{
+    div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
+static void div64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
+                   long long int* dst, size_t step, Size sz, void* scale)
 {
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
@@ -2183,11 +2808,30 @@ static void recip16s( const short* src1, size_t step1, const short* src2, size_t
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+static void recip32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
+                   unsigned int* dst, size_t step, Size sz, void* scale)
+{
+    recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
 static void recip32s( const int* src1, size_t step1, const int* src2, size_t step2,
                    int* dst, size_t step, Size sz, void* scale)
 {
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+
+static void recip64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
+                     unsigned long long int* dst, size_t step, Size sz, void* scale)
+{
+    recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
+static void recip64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
+                     long long int* dst, size_t step, Size sz, void* scale)
+{
+    recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
+}
+
 
 static void recip32f( const float* src1, size_t step1, const float* src2, size_t step2,
                    float* dst, size_t step, Size sz, void* scale)
@@ -2205,11 +2849,14 @@ static void recip64f( const double* src1, size_t step1, const double* src2, size
 static BinaryFunc* getMulTab()
 {
     static BinaryFunc mulTab[] =
-    {
-        (BinaryFunc)mul8u, (BinaryFunc)mul8s, (BinaryFunc)mul16u,
-        (BinaryFunc)mul16s, (BinaryFunc)mul32s, (BinaryFunc)mul32f,
-        (BinaryFunc)mul64f, 0
-    };
+    TYPE_TAB_ORDER( \
+        (BinaryFunc)mul8u,  (BinaryFunc)mul8s,  \
+        (BinaryFunc)mul16u, (BinaryFunc)mul16s, \
+        (BinaryFunc)mul32u, (BinaryFunc)mul32s, \
+        (BinaryFunc)mul64u, (BinaryFunc)mul64s, \
+        (BinaryFunc)mul32f, (BinaryFunc)mul64f, \
+        0, 0, 0, 0 \
+    );
 
     return mulTab;
 }
@@ -2217,11 +2864,14 @@ static BinaryFunc* getMulTab()
 static BinaryFunc* getDivTab()
 {
     static BinaryFunc divTab[] =
-    {
-        (BinaryFunc)div8u, (BinaryFunc)div8s, (BinaryFunc)div16u,
-        (BinaryFunc)div16s, (BinaryFunc)div32s, (BinaryFunc)div32f,
-        (BinaryFunc)div64f, 0
-    };
+    TYPE_TAB_ORDER(
+    (BinaryFunc)div8u,  (BinaryFunc)div8s, \
+    (BinaryFunc)div16u, (BinaryFunc)div16s, \
+    (BinaryFunc)div32u, (BinaryFunc)div32s, \
+    (BinaryFunc)div64u, (BinaryFunc)div64s, \
+    (BinaryFunc)div32f, (BinaryFunc)div64f, \
+    0, 0, 0, 0 \
+);
 
     return divTab;
 }
@@ -2229,12 +2879,14 @@ static BinaryFunc* getDivTab()
 static BinaryFunc* getRecipTab()
 {
     static BinaryFunc recipTab[] =
-    {
-        (BinaryFunc)recip8u, (BinaryFunc)recip8s, (BinaryFunc)recip16u,
-        (BinaryFunc)recip16s, (BinaryFunc)recip32s, (BinaryFunc)recip32f,
-        (BinaryFunc)recip64f, 0
-    };
-
+    TYPE_TAB_ORDER(
+        (BinaryFunc)recip8u,  (BinaryFunc)recip8s, \
+        (BinaryFunc)recip16u, (BinaryFunc)recip16s,\
+        (BinaryFunc)recip32u, (BinaryFunc)recip32s,\
+        (BinaryFunc)recip64u, (BinaryFunc)recip64s,\
+        (BinaryFunc)recip32f, (BinaryFunc)recip64f,\
+        0, 0, 0, 0 \
+    );
     return recipTab;
 }
 
@@ -2381,10 +3033,28 @@ static void addWeighted16s( const short* src1, size_t step1, const short* src2, 
     addWeighted_<short, float>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
 
+static void addWeighted32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
+                           unsigned int* dst, size_t step, Size sz, void* scalars )
+{
+    addWeighted_<unsigned int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
+}
+
 static void addWeighted32s( const int* src1, size_t step1, const int* src2, size_t step2,
                             int* dst, size_t step, Size sz, void* scalars )
 {
     addWeighted_<int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
+}
+
+static void addWeighted64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
+                           unsigned long long int* dst, size_t step, Size sz, void* scalars )
+{
+    addWeighted_<unsigned long long int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
+}
+
+static void addWeighted64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
+                           long long int* dst, size_t step, Size sz, void* scalars )
+{
+    addWeighted_<long long int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
 
 static void addWeighted32f( const float* src1, size_t step1, const float* src2, size_t step2,
@@ -2402,12 +3072,14 @@ static void addWeighted64f( const double* src1, size_t step1, const double* src2
 static BinaryFunc* getAddWeightedTab()
 {
     static BinaryFunc addWeightedTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(addWeighted8u), (BinaryFunc)GET_OPTIMIZED(addWeighted8s), (BinaryFunc)GET_OPTIMIZED(addWeighted16u),
-        (BinaryFunc)GET_OPTIMIZED(addWeighted16s), (BinaryFunc)GET_OPTIMIZED(addWeighted32s), (BinaryFunc)addWeighted32f,
-        (BinaryFunc)addWeighted64f, 0
-    };
-
+    TYPE_TAB_ORDER(
+        (BinaryFunc)GET_OPTIMIZED(addWeighted8u),  (BinaryFunc)GET_OPTIMIZED(addWeighted8s), \
+        (BinaryFunc)GET_OPTIMIZED(addWeighted16u), (BinaryFunc)GET_OPTIMIZED(addWeighted16s), \
+        (BinaryFunc)GET_OPTIMIZED(addWeighted32u), (BinaryFunc)GET_OPTIMIZED(addWeighted32s), \
+        (BinaryFunc)GET_OPTIMIZED(addWeighted64u), (BinaryFunc)GET_OPTIMIZED(addWeighted64s), \
+        (BinaryFunc)GET_OPTIMIZED(addWeighted32f), (BinaryFunc)addWeighted64f, \
+        0, 0, 0, 0 \
+    );
     return addWeightedTab;
 }
 
@@ -2700,7 +3372,25 @@ static void cmp16s(const short* src1, size_t step1, const short* src2, size_t st
     }
 }
 
+static void cmp32u(const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
+                   uchar* dst, size_t step, Size size, void* _cmpop)
+{
+    cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
+}
+
 static void cmp32s(const int* src1, size_t step1, const int* src2, size_t step2,
+                   uchar* dst, size_t step, Size size, void* _cmpop)
+{
+    cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
+}
+
+static void cmp64u(const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
+                   uchar* dst, size_t step, Size size, void* _cmpop)
+{
+    cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
+}
+
+static void cmp64s(const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                    uchar* dst, size_t step, Size size, void* _cmpop)
 {
     cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
@@ -2731,26 +3421,34 @@ static void cmp64f(const double* src1, size_t step1, const double* src2, size_t 
 static BinaryFunc getCmpFunc(int depth)
 {
     static BinaryFunc cmpTab[] =
-    {
-        (BinaryFunc)GET_OPTIMIZED(cmp8u), (BinaryFunc)GET_OPTIMIZED(cmp8s),
-        (BinaryFunc)GET_OPTIMIZED(cmp16u), (BinaryFunc)GET_OPTIMIZED(cmp16s),
-        (BinaryFunc)GET_OPTIMIZED(cmp32s),
-        (BinaryFunc)GET_OPTIMIZED(cmp32f), (BinaryFunc)cmp64f,
-        0
-    };
+   TYPE_TAB_ORDER(
+        (BinaryFunc)GET_OPTIMIZED(cmp8u),  (BinaryFunc)GET_OPTIMIZED(cmp8s), \
+        (BinaryFunc)GET_OPTIMIZED(cmp16u), (BinaryFunc)GET_OPTIMIZED(cmp16s),\
+        (BinaryFunc)GET_OPTIMIZED(cmp32u), (BinaryFunc)GET_OPTIMIZED(cmp32s),\
+        (BinaryFunc)GET_OPTIMIZED(cmp64u), (BinaryFunc)GET_OPTIMIZED(cmp64s),\
+        (BinaryFunc)GET_OPTIMIZED(cmp32f), (BinaryFunc)cmp64f, \
+        0, 0, 0, 0 \
+    );
+
 
     return cmpTab[depth];
 }
 
 static double getMinVal(int depth)
 {
-    static const double tab[] = {0, -128, 0, -32768, INT_MIN, -FLT_MAX, -DBL_MAX, 0};
+    static const double tab[] = TYPE_TAB_ORDER( \
+        double(CV_8U_MIN),  double(CV_8S_MIN),  \
+        double(CV_16U_MIN), double(CV_16S_MIN), double(CV_32U_MIN), double(CV_32S_MIN), \
+        double(CV_64U_MIN), double(CV_64S_MIN), double(CV_32F_MIN), double(CV_64F_MIN), 0, 0, 0, 0);
     return tab[depth];
 }
 
 static double getMaxVal(int depth)
 {
-    static const double tab[] = {255, 127, 65535, 32767, INT_MAX, FLT_MAX, DBL_MAX, 0};
+    static const double tab[] = TYPE_TAB_ORDER( \
+        double(CV_8U_MAX),  double(CV_8S_MAX), \
+        double(CV_16U_MAX), double(CV_16S_MAX), double(CV_32U_MAX), double(CV_32S_MAX),\
+        double(CV_64U_MAX), double(CV_64S_MAX), double(CV_32F_MAX), double(CV_64F_MAX), 0, 0, 0, 0);
     return tab[depth];
 }
 
@@ -2844,7 +3542,7 @@ static bool ocl_compare(InputArray _src1, InputArray _src2, OutputArray _dst, in
                ocl::KernelArg::WriteOnly(dst, cn, kercn));
     }
 
-    size_t globalsize[2] = { dst.cols * cn / kercn, (dst.rows + rowsPerWI - 1) / rowsPerWI };
+    size_t globalsize[2] = { static_cast<size_t>(dst.cols * cn / kercn), static_cast<size_t>((dst.rows + rowsPerWI - 1) / rowsPerWI) };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -3215,8 +3913,26 @@ static void inRange16s(const short* src1, size_t step1, const short* src2, size_
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
 
+static void inRange32u(const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
+                       const unsigned int* src3, size_t step3, uchar* dst, size_t step, Size size)
+{
+    inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
+}
+
 static void inRange32s(const int* src1, size_t step1, const int* src2, size_t step2,
                        const int* src3, size_t step3, uchar* dst, size_t step, Size size)
+{
+    inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
+}
+
+static void inRange64u(const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
+                       const unsigned long long int* src3, size_t step3, uchar* dst, size_t step, Size size)
+{
+    inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
+}
+
+static void inRange64s(const long long int* src1, size_t step1, const long long int* src2, size_t step2,
+                       const long long int* src3, size_t step3, uchar* dst, size_t step, Size size)
 {
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
@@ -3263,12 +3979,14 @@ typedef void (*InRangeFunc)( const uchar* src1, size_t step1, const uchar* src2,
 static InRangeFunc getInRangeFunc(int depth)
 {
     static InRangeFunc inRangeTab[] =
-    {
-        (InRangeFunc)GET_OPTIMIZED(inRange8u), (InRangeFunc)GET_OPTIMIZED(inRange8s), (InRangeFunc)GET_OPTIMIZED(inRange16u),
-        (InRangeFunc)GET_OPTIMIZED(inRange16s), (InRangeFunc)GET_OPTIMIZED(inRange32s), (InRangeFunc)GET_OPTIMIZED(inRange32f),
-        (InRangeFunc)inRange64f, 0
-    };
-
+    TYPE_TAB_ORDER( \
+        (InRangeFunc)GET_OPTIMIZED(inRange8u),  (InRangeFunc)GET_OPTIMIZED(inRange8s), \
+        (InRangeFunc)GET_OPTIMIZED(inRange16u), (InRangeFunc)GET_OPTIMIZED(inRange16s),\
+        (InRangeFunc)GET_OPTIMIZED(inRange32u), (InRangeFunc)GET_OPTIMIZED(inRange32s),\
+        (InRangeFunc)GET_OPTIMIZED(inRange64u), (InRangeFunc)GET_OPTIMIZED(inRange64s),\
+        (InRangeFunc)GET_OPTIMIZED(inRange32f), (InRangeFunc)inRange64f, \
+        0, 0, 0, 0 \
+    );
     return inRangeTab[depth];
 }
 
@@ -3384,7 +4102,7 @@ static bool ocl_inRange( InputArray _src, InputArray _lowerb,
         ker.args(srcarg, dstarg, ocl::KernelArg::ReadOnlyNoSize(lscalaru),
                ocl::KernelArg::ReadOnlyNoSize(uscalaru), rowsPerWI);
 
-    size_t globalsize[2] = { ssize.width / colsPerWI, (ssize.height + rowsPerWI - 1) / rowsPerWI };
+    size_t globalsize[2] = { static_cast<size_t>(ssize.width / colsPerWI), static_cast<size_t>((ssize.height + rowsPerWI - 1) / rowsPerWI) };
     return ker.run(2, globalsize, NULL, false);
 }
 
