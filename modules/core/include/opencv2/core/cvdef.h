@@ -252,12 +252,14 @@ typedef signed char schar;
 /****************************************************************************************\
 *                                  Matrix type (Mat)                                     *
 \****************************************************************************************/
-
+// CV_CN_MAX reserves 9 bits for the channel numbers.
 #define CV_CN_MAX     (1 << 9)
 // CV_CN_SHIFT resrves the first 3 bits for the Data Types (CV_8U, etc)
 #define CV_CN_SHIFT   3
+// CV_DEPTH_MAX is the maximum number of Data types allowed.
 #define CV_DEPTH_MAX  (1 << CV_CN_SHIFT)
 // The order is
+// {CV_8U, CV_8S, CV_16U, CV_16S, CV_32U, CV_32S, CV_64U, CV_64S, CV_32F, CV_64F, CV_USRTYPE1, CV_USRTYPE2, CV_USRTYPE3, CV_USRTYPE4}
 // {CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_32F, CV_64F, CV_USRTYPE1}
 
 //#define TYPE_TAB_ORDER(cv8U, cv8S, cv16U, cv16S, cv32U, cv32S, cv64U, cv64S, cv32F, cv64F, cvUSRTYPE1, cvUSRTYPE2, cvUSRTYPE3, cvUSRTYPE4) {cv8U, cv8S, cv16U, cv16S, cv32U, cv32S, cv64U, cv64S, cv32F, cv64F, cvUSRTYPE1, cvUSRTYPE2, cvUSRTYPE3, cvUSRTYPE4}
