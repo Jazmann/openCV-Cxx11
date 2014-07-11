@@ -508,6 +508,16 @@ CV_INLINE int cvRound( double value )
 #endif
 }
 
+CV_INLINE int cv64Round( double value )
+{
+    double intpart, fractpart;
+    fractpart = modf(value, &intpart);
+    if ((fabs(fractpart) != 0.5) || ((((int)intpart) % 2) != 0))
+        return (long long int)(value + (value >= 0 ? 0.5 : -0.5));
+    else
+        return (long long int)intpart;
+}
+
 CV_INLINE int cvFloor( double value )
 {
 #if (defined _MSC_VER && defined _M_X64 || (defined __GNUC__ && defined __SSE2__ && !defined __APPLE__)) && !defined(__CUDACC__)

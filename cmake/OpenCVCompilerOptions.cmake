@@ -1,3 +1,5 @@
+list( APPEND CMAKE_CXX_FLAGS "-std=c++11 -stdlib=libc++ ${CMAKE_CXX_FLAGS}")
+
 if(MINGW OR (X86 AND UNIX AND NOT APPLE))
   # mingw compiler is known to produce unstable SSE code with -O3 hence we are trying to use -O2 instead
   if(CMAKE_COMPILER_IS_GNUCXX)
