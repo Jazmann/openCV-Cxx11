@@ -2110,10 +2110,14 @@ static void iPow64f(const double* src, double* dst, int len, int power)
 typedef void (*IPowFunc)( const uchar* src, uchar* dst, int len, int power );
 
 static IPowFunc ipowTab[] =
-{
-    (IPowFunc)iPow8u, (IPowFunc)iPow8s, (IPowFunc)iPow16u, (IPowFunc)iPow16s,
-    (IPowFunc)iPow32s, (IPowFunc)iPow32f, (IPowFunc)iPow64f, 0
-};
+TYPE_TAB_ORDER( \
+    (IPowFunc)iPow8u,  (IPowFunc)iPow8s, \
+    (IPowFunc)iPow16u, (IPowFunc)iPow16s, \
+    (IPowFunc)iPow32u, (IPowFunc)iPow32s, \
+    (IPowFunc)iPow64u, (IPowFunc)iPow64s, \
+    (IPowFunc)iPow32f, (IPowFunc)iPow64f, \
+    0, 0, 0, 0 \
+);
 
 #ifdef HAVE_OPENCL
 
@@ -2331,6 +2335,35 @@ void sqrt(InputArray a, OutputArray b)
 
 template<int cv_mat_type> struct mat_type_assotiations{};
 
+    template<> struct mat_type_assotiations<CV_32U>
+    {
+        typedef CV_32U_TYPE type;
+        static const type min_allowable = CV_32U_MIN;
+        static const type max_allowable = CV_32U_MAX;
+    };
+
+    template<> struct mat_type_assotiations<CV_32S>
+    {
+        typedef CV_32S_TYPE type;
+        static const type min_allowable = CV_32S_MIN;
+        static const type max_allowable = CV_32S_MAX;
+    };
+
+    template<> struct mat_type_assotiations<CV_64U>
+    {
+        typedef CV_64U_TYPE type;
+        static const type min_allowable = CV_64U_MIN;
+        static const type max_allowable = CV_64U_MAX;
+    };
+
+    template<> struct mat_type_assotiations<CV_64S>
+    {
+        typedef CV_64S_TYPE type;
+        static const type min_allowable = CV_64S_MIN;
+        static const type max_allowable = CV_64S_MAX;
+    };
+
+
 template<> struct mat_type_assotiations<CV_8U>
 {
     typedef unsigned char type;
@@ -2358,12 +2391,6 @@ template<> struct mat_type_assotiations<CV_16S>
     static const type max_allowable = SHRT_MAX;
 };
 
-template<> struct mat_type_assotiations<CV_32S>
-{
-    typedef int type;
-    static const type min_allowable = (-INT_MAX - 1);
-    static const type max_allowable = INT_MAX;
-};
 
 // inclusive maxVal !!!
 template<int depth>
@@ -2401,13 +2428,17 @@ bool checkIntegerRange(cv::Mat src, Point& bad_pt, int minVal, int maxVal, doubl
 typedef bool (*check_range_function)(cv::Mat src, Point& bad_pt, int minVal, int maxVal, double& bad_value);
 
 check_range_function check_range_functions[] =
-{
-    &checkIntegerRange<CV_8U>,
-    &checkIntegerRange<CV_8S>,
-    &checkIntegerRange<CV_16U>,
-    &checkIntegerRange<CV_16S>,
-    &checkIntegerRange<CV_32S>
-};
+TYPE_TAB_ORDER( \
+    &checkIntegerRange<CV_8U>, \
+    &checkIntegerRange<CV_8S>, \
+    &checkIntegerRange<CV_16U>, \
+    &checkIntegerRange<CV_16S>, \
+    &checkIntegerRange<CV_32U>, \
+    &checkIntegerRange<CV_32S>, \
+    &checkIntegerRange<CV_64U>, \
+    &checkIntegerRange<CV_64S>, \
+    0, 0, 0, 0, 0, 0 \
+);
 
 bool checkRange(InputArray _src, bool quiet, Point* pt, double minVal, double maxVal)
 {
