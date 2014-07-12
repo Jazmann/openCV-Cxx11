@@ -470,6 +470,34 @@ enum { INTERSECT_NONE = 0,
        INTERSECT_FULL  = 2
      };
 
+
+template<int src_t, int dst_t> class CV_EXPORTS colorSpaceConverter
+    {
+        public :
+        virtual ~colorSpaceConverter<src_t, dst_t>(){};
+        using srcInfo = cv::Data_Type<src_t>;
+        using srcType = typename cv::Data_Type<src_t>::type;
+        using src_channel_type = srcType;
+
+        using dstInfo = cv::Data_Type<dst_t>;
+        using dstType = typename cv::Data_Type<dst_t>::type;
+        using dst_channel_type = dstType;
+
+        using wrkInfo  = typename cv::Work_Type<src_t, dst_t>;
+        using wrkType  = typename cv::Work_Type<src_t, dst_t>::type;
+        using sWrkInfo = typename cv::Signed_Work_Type<src_t, dst_t>;
+        using sWrkType = typename cv::Signed_Work_Type<src_t, dst_t>::type;
+        virtual void CV_EXPORTS operator()(const srcType * src, dstType* dst, int n) const = 0;
+    };
+
+    // template class colorSpaceConverter<CV_8UC3,CV_8UC3>;
+    // template class colorSpaceConverter<CV_8UC4,CV_8UC3>;
+
+template<int src_t, int dst_t> void CV_EXPORTS convertColor(InputArray _src, OutputArray _dst, colorSpaceConverter<src_t, dst_t>& colorConverter);
+
+template <typename Cvt> CV_EXPORTS_W void CvtColorLoop(const Mat& src, Mat& dst, const Cvt& cvt);
+
+
 /*!
  The Base Class for 1D or Row-wise Filters
 
@@ -1406,6 +1434,9 @@ CV_EXPORTS_W int floodFill( InputOutputArray image, InputOutputArray mask,
 
 //! converts image from one color space to another
 CV_EXPORTS_W void cvtColor( InputArray src, OutputArray dst, int code, int dstCn = 0 );
+
+/* Converts input array pixels from one color space to another */
+CV_EXPORTS_W void CvtColor( const CvArr* src, CvArr* dst, int code );
 
 // main function for all demosaicing procceses
 CV_EXPORTS_W void demosaicing(InputArray _src, OutputArray _dst, int code, int dcn = 0);

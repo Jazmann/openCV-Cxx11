@@ -1551,7 +1551,7 @@ cvHaarDetectObjectsForROC( const CvArr* _img,
 
     if( CV_MAT_CN(img->type) > 1 )
     {
-        cvCvtColor( img, temp, CV_BGR2GRAY );
+        cv::CvtColor( img, temp, CV_BGR2GRAY );
         img = temp;
     }
 
