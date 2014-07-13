@@ -105,6 +105,242 @@ static IppStatus sts = ippInit();
 namespace cv
 {
 
+#include <cmath>
+
+    double erf(double x)
+    {
+        // constants
+        double a1 =  0.254829592;
+        double a2 = -0.284496736;
+        double a3 =  1.421413741;
+        double a4 = -1.453152027;
+        double a5 =  1.061405429;
+        double p  =  0.3275911;
+
+        // Save the sign of x
+        int sign = 1;
+        if (x < 0)
+            sign = -1;
+        x = fabs(x);
+
+        // A&S formula 7.1.26
+        double t = 1.0/(1.0 + p*x);
+        double y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-x*x);
+
+        return sign*y;
+    }
+    double erf(double a, double b)
+    {
+        // constants
+        const double a1 =  0.254829592;
+        const double a2 = -0.284496736;
+        const double a3 =  1.421413741;
+        const double a4 = -1.453152027;
+        const double a5 =  1.061405429;
+        const double p  =  0.3275911;
+
+     //
+
+        // Save the sign of x
+        int sign = 1;
+        if (a < 0) sign *= -1; a = fabs(a);
+        if (b < 0) sign *= -1; b = fabs(b);
+
+        // A&S formula 7.1.26
+        double pr = 1/p;
+        double t = (pr*b)/(a + pr*b);
+        double y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-(a*a)/(b*b));
+
+        return sign*y;
+    }
+
+double erfinv(double x)
+    {
+        // returns  the inverse error function
+        // x must be  <-1<x<1
+
+        int kMaxit    = 50;
+        double kEps   = 1e-8;
+        double kConst = 0.8862269254527579;     // sqrt(pi)/2.0
+
+        if(fabs(x) <= kEps) return kConst*x;
+
+        // Newton iterations
+        double erfi, derfi, y0,y1,dy0,dy1;
+        if(fabs(x) < 1.0) {
+            erfi  = kConst*fabs(x);
+            y0    = erf(0.9*erfi);
+            derfi = 0.1*erfi;
+            for (int iter=0; iter<kMaxit; iter++) {
+                y1  = 1. - erfc(erfi);
+                dy1 = fabs(x) - y1;
+                if (fabs(dy1) < kEps)  {if (x < 0) return -erfi; else return erfi;}
+                dy0    = y1 - y0;
+                derfi *= dy1/dy0;
+                y0     = y1;
+                erfi  += derfi;
+                if(fabs(derfi/erfi) < kEps) {if (x < 0) return -erfi; else return erfi;}
+            }
+        }
+        return 0; //did not converge
+    }
+
+template<int src_t, int dst_t> distributeErfParameters<src_t, dst_t>::distributeErfParameters()
+    {
+        sMax = srcInfo::max;  sMin = srcInfo::min; sRange = (sMax - sMin);
+        dMax = dstInfo::max;  dMin = dstInfo::min; dRange = dMax - dMin;
+
+        uC = 0.5; c = sRange / 2 + sMin; g = 1.0;
+
+        ErfA = wrkType(erf(uC)); ErfB = wrkType(erf(uC)); ErfAB = ErfB + ErfA;
+
+        shift = dstType(dMin + dRange * ErfA / ErfAB);
+        scale = double(dRange) / ErfAB;
+
+        sUnitGrad[0] = std::floor(c - (sRange * std::sqrt(std::log((2*dRange * g)/(ErfAB  * std::sqrt(CV_PI) * sRange))))/g);
+        sUnitGrad[1] = std::ceil( c + (sRange * sqrt(log((2*dRange * g)/(ErfAB * std::sqrt(CV_PI) * sRange))))/g);
+        ull = 1./dRange; uul = 1. - ull; // double(dRange - 1)/dRange;
+        sLowHigh[0] = std::floor(c + sRange * erfinv(ull*ErfB-uul*ErfA)/g);
+        sLowHigh[1] = std::ceil( c - sRange * erfinv(ull*ErfA-uul*ErfB)/g);
+
+        useLookUpTable = sUnitGrad[0] - sLowHigh[0] < lookUpTableMax;
+        linearDistribution = sUnitGrad[0] - sLowHigh[0] < nonLinearMin;
+
+        dUnitGrad[0] = shift + scale * erf( g * (sUnitGrad[0] - c) / sRange);
+        dUnitGrad[1] = shift + scale * erf( g * (sUnitGrad[1] - c) / sRange);
+        linearConstant = dUnitGrad[0] - sUnitGrad[0];
+        shiftednErfConstant = sUnitGrad[1] + dUnitGrad[0] - sUnitGrad[0] - dUnitGrad[1];
+        dMaxShifted = (dMax + shiftednErfConstant);
+    };
+
+
+template<int src_t, int dst_t> distributeErfParameters<src_t, dst_t>::distributeErfParameters(double _g, double _uC, typename distributeErfParameters::srcType _sMin, typename distributeErfParameters::srcType _sMax, typename distributeErfParameters::dstType _dMin, typename distributeErfParameters::dstType _dMax): uC(_uC), g(_g), sMin(_sMin), sMax(_sMax), dMin(_dMin), dMax(_dMax)
+    {
+        CV_Assert((int)sMin <= (int)c && (int)c <= (int)sMax && (int)dMin <= (int)dMax);
+        sRange = (sMax - sMin);
+        dRange = (dMax - dMin);
+        c = srcType(uC * sRange) + sMin;
+
+        ErfA = erf(g * uC);
+        ErfB = erf((g*(1 - uC)));
+        ErfAB = ErfB + ErfA;
+        shift = dstType(dMin + dRange * ErfA / ErfAB);
+        scale = double(dRange) / ErfAB;
+
+        sUnitGrad[0] = std::floor(c - (sRange * std::sqrt(std::log((2*dRange * g)/(ErfAB  * std::sqrt(CV_PI) * sRange))))/g);
+        sUnitGrad[1] = std::ceil( c + (sRange * sqrt(log((2*dRange * g)/(ErfAB * std::sqrt(CV_PI) * sRange))))/g);
+        ull = 1./dRange; uul = 1. - ull; // double(dRange - 1)/dRange;
+        sLowHigh[0] = std::floor(c + sRange * erfinv(ull*ErfB-uul*ErfA)/g);
+        sLowHigh[1] = std::ceil( c - sRange * erfinv(ull*ErfA-uul*ErfB)/g);
+
+        // srcType sLowHigh[0] = std::floor(c + sRange * erfinv(ull*ErfAB - ErfA)/g);
+        // srcType sLowHigh[1] = std::ceil( c - sRange * erfinv(ull*ErfAB - ErfB)/g);
+
+        useLookUpTable = sUnitGrad[0] - sLowHigh[0] < lookUpTableMax;
+        linearDistribution = sUnitGrad[0] - sLowHigh[0] < nonLinearMin;
+        linearGrad = double(dRange)/double(sLowHigh[1] - sLowHigh[0]);
+
+        dUnitGrad[0] = shift + scale * erf( g * (sUnitGrad[0] - c) / sRange);
+        dUnitGrad[1] = shift + scale * erf( g * (sUnitGrad[1] - c) / sRange);
+        linearConstant = dUnitGrad[0] - sUnitGrad[0];
+        shiftednErfConstant = sUnitGrad[1] + dUnitGrad[0] - sUnitGrad[0] - dUnitGrad[1];
+        dMaxShifted = (dMax + shiftednErfConstant);
+    };
+
+template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf()
+    {
+        par();
+    };
+template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf(distributeErfParameters<src_t, dst_t> _par)
+    {
+        par = _par;    };
+
+template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf(double _g, typename distributeErf::srcType _c, typename distributeErf::srcType sMin, typename distributeErf::srcType sMax, typename distributeErf::dstType dMin, typename distributeErf::dstType dMax):par(_g,_c,sMin,sMax,dMin,dMax)
+    {
+        CV_Assert((int)sMin <= (int)_c && (int)_c <= (int)sMax && (int)dMin <= (int)dMax);
+    };
+
+template<int src_t, int dst_t>  void distributeErf<src_t, dst_t>::operator()(const typename distributeErf::srcType src, typename distributeErf::dstType &dst)
+    {
+        if(src >= par.c){
+            dst = dstType(par.shift + par.scale * erf(par.g*(src - par.c), double(par.sRange)));
+        }else{
+            dst = dstType(par.shift - par.scale * erf(par.g*(par.c - src), double(par.sRange)));
+        };
+
+    };
+
+
+template<int src_t, int dst_t> distributeErfCompact<src_t, dst_t>::distributeErfCompact(distributeErfParameters<src_t, dst_t> _par)
+    {
+        par = _par;    };
+template<int src_t, int dst_t> distributeErfCompact<src_t, dst_t>::distributeErfCompact(double _g, typename distributeErfCompact::srcType _c, typename distributeErfCompact::srcType sMin, typename distributeErfCompact::srcType sMax, typename distributeErfCompact::dstType dMin, typename distributeErfCompact::dstType dMax): par(_g,_c,sMin,sMax,dMin,dMax)
+    {
+        CV_Assert((int)sMin <= (int)_c && (int)_c <= (int)sMax && (int)dMin <= (int)dMax);    };
+
+template<int src_t, int dst_t>  void distributeErfCompact<src_t, dst_t>::operator()(const typename distributeErfCompact::srcType src, typename distributeErfCompact::dstType &dst)
+    {
+        // 5 Region code : constant - erf - linear - erf - constant
+        // Assumes that c is in the linear region.
+        if(src <= par.sUnitGrad[1]){
+            if(src > par.sLowHigh[1]){
+                dst = dstType(par.shift + par.scale * erf(par.g*(src - par.c), double(par.sRange)));
+            }else{
+                dst = par.dMin;
+            }
+        }else if(src <= par.sUnitGrad[2]){
+            dst = dstType(src + par.linearConstant);
+        }else{
+            if(src < par.sLowHigh[2]){
+                dst = dstType(par.shift - par.scale * erf(par.g*(par.c - src), double(par.sRange)) + par.shiftedErfConstant);
+            }else{
+                dst = par.dMax;
+            }
+        }
+
+    };
+
+
+template<int src_t, int dst_t> distributeLinear<src_t, dst_t>::distributeLinear()
+    {
+        par();
+    };
+template<int src_t, int dst_t> distributeLinear<src_t, dst_t>::distributeLinear(distributeErfParameters<src_t, dst_t> _par)
+    {
+        par = _par;
+    };
+
+template<int src_t, int dst_t> distributeLinear<src_t, dst_t>::distributeLinear(double _g, double _c, typename distributeLinear::srcType sMin, typename distributeLinear::srcType sMax, typename distributeLinear::dstType dMin, typename distributeLinear::dstType dMax): par(_g,_c,sMin,sMax,dMin,dMax)    {
+        CV_Assert((int)sMin <= (int)c && (int)c <= (int)sMax && (int)dMin <= (int)sMax);
+    };
+
+template<int src_t, int dst_t>  void distributeLinear<src_t, dst_t>::operator()(const typename distributeLinear::srcType src, typename distributeLinear::dstType dst) const
+    {
+        if(src <= par.sLowHigh[0]){
+            dst = par.dMin;
+        }else if(src >= par.sLowHigh[1]){
+            dst = par.dMax;
+        }else{
+            dst = dstType( par.linearGrad * (src - par.sLowHigh[0]));
+        };
+    };
+
+
+
+template<int src_t, int dst_t> distributePartition<src_t, dst_t>::distributePartition(typename distributePartition::srcType _sMinCutoff, typename distributePartition::srcType _sMaxCutoff, typename distributePartition::srcType _sMin, typename distributePartition::srcType _sMax, typename distributePartition::dstType _dMin, typename distributePartition::dstType _dMax):sMinCutoff(_sMinCutoff), sMaxCutoff(_sMaxCutoff)    {
+        CV_Assert((int)_sMin <= (int)sMinCutoff && (int)sMinCutoff <= (int)_sMax && (int)_sMin <= (int)sMaxCutoff && (int)sMaxCutoff <= (int)_sMax && (int)_dMin <= (int)_dMax);
+    };
+
+template<int src_t, int dst_t>  void distributePartition<src_t, dst_t>::operator()(const typename distributePartition::srcType src, typename distributePartition::dstType &dst)
+    {
+        if(src >= sMinCutoff && src <= sMaxCutoff){
+            dst = dstType(src);
+        }else{
+            dst = 0;
+        }
+
+    };
+
 // computes cubic spline coefficients for a function: (xi=i, yi=f[i]), i=0..n
 template<typename _Tp> static void splineBuild(const _Tp* f, int n, _Tp* tab)
 {
