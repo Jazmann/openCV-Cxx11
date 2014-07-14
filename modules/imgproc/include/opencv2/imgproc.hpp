@@ -44,6 +44,7 @@
 #define __OPENCV_IMGPROC_HPP__
 
 #include "opencv2/core.hpp"
+#include "opencv2/imgproc/types_c.h"
 
 /*! \namespace cv
  Namespace where all the C++ OpenCV functionality resides
@@ -459,7 +460,6 @@ enum { COLOR_BGR2BGRA     = 0,
        COLOR_BayerGB2RGB_EA  = COLOR_BayerGR2BGR_EA,
        COLOR_BayerRG2RGB_EA  = COLOR_BayerBG2BGR_EA,
        COLOR_BayerGR2RGB_EA  = COLOR_BayerGB2BGR_EA,
-
 
        COLOR_COLORCVT_MAX  = 139
 };
