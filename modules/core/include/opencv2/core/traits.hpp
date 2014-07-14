@@ -45,6 +45,7 @@
 #define __OPENCV_CORE_TRAITS_HPP__
 
 #include "opencv2/core/cvdef.h"
+#include "opencv2/core/cvdef.hpp"
 
 namespace cv
 {
@@ -180,6 +181,7 @@ public:
          };
 };
 
+
 template<> class DataType<float>
 {
 public:
@@ -209,7 +211,6 @@ public:
            type         = CV_MAKETYPE(depth, channels)
          };
 };
-
 
 /*!
   A helper class for cv::DataType

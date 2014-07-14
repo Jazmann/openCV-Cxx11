@@ -2772,7 +2772,7 @@ static bool ocl_setIdentity( InputOutputArray _m, const Scalar& s )
     k.args(ocl::KernelArg::WriteOnly(m), ocl::KernelArg::Constant(Mat(1, 1, sctype, s)),
            rowsPerWI);
 
-    size_t globalsize[2] = { m.cols, (m.rows + rowsPerWI - 1) / rowsPerWI };
+    size_t globalsize[2] = { static_cast<size_t>(m.cols), static_cast<size_t>((m.rows + rowsPerWI - 1) / rowsPerWI) };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -3005,7 +3005,7 @@ static bool ocl_transpose( InputArray _src, OutputArray _dst )
                ocl::KernelArg::WriteOnlyNoSize(dst));
 
     size_t localsize[2]  = { TILE_DIM, BLOCK_ROWS };
-    size_t globalsize[2] = { src.cols, inplace ? (src.rows + rowsPerWI - 1) / rowsPerWI : (divUp(src.rows, TILE_DIM) * BLOCK_ROWS) };
+    size_t globalsize[2] = { static_cast<size_t>(src.cols), static_cast<size_t>(inplace ? (src.rows + rowsPerWI - 1) / rowsPerWI : (divUp(src.rows, TILE_DIM) * BLOCK_ROWS)) };
 
     if (inplace && dev.isIntel())
     {
@@ -3493,7 +3493,7 @@ static bool ocl_reduce(InputArray _src, OutputArray _dst,
         kpre.args(ocl::KernelArg::ReadOnly(src),
                   ocl::KernelArg::WriteOnlyNoSize(buf));
 
-        size_t globalSize[2] = { buf_cols, src.rows };
+        size_t globalSize[2] = {  static_cast<size_t>(buf_cols), static_cast<size_t>(src.rows) };
         if (!kpre.run(2, globalSize, NULL, false))
             return false;
 
