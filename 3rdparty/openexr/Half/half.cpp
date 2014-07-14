@@ -44,6 +44,15 @@
 //
 //---------------------------------------------------------------------------
 
+
+#ifndef REGISTER
+# if defined __GXX_EXPERIMENTAL_CXX0X__ || __cplusplus >= 201103L
+#  define REGISTER
+# else
+#  define REGISTER register
+# endif
+#endif
+
 #include <assert.h>
 #include "half.h"
 
@@ -95,9 +104,9 @@ half::convert (int i)
     // of float and half (127 versus 15).
     //
 
-    register int s =  (i >> 16) & 0x00008000;
-    register int e = ((i >> 23) & 0x000000ff) - (127 - 15);
-    register int m =   i        & 0x007fffff;
+    REGISTER int s =  (i >> 16) & 0x00008000;
+    REGISTER int e = ((i >> 23) & 0x000000ff) - (127 - 15);
+    REGISTER int m =   i        & 0x007fffff;
 
     //
     // Now reassemble s, e and m into a half:

@@ -54,6 +54,14 @@
 #include <iomanip>
 #include <string.h>
 
+#ifndef REGISTER
+# if defined __GXX_EXPERIMENTAL_CXX0X__ || __cplusplus >= 201103L
+#  define REGISTER
+# else
+#  define REGISTER register
+# endif
+#endif
+
 #if (defined _WIN32 || defined _WIN64) && defined _MSC_VER
 // suppress exception specification warnings
 #pragma warning(disable:4290)
@@ -2526,11 +2534,11 @@ Matrix44<T>::multiply (const Matrix44<T> &a,
                        const Matrix44<T> &b,
                        Matrix44<T> &c)
 {
-    register const T * IMATH_RESTRICT ap = &a.x[0][0];
-    register const T * IMATH_RESTRICT bp = &b.x[0][0];
-    register       T * IMATH_RESTRICT cp = &c.x[0][0];
+    REGISTER const T * IMATH_RESTRICT ap = &a.x[0][0];
+    REGISTER const T * IMATH_RESTRICT bp = &b.x[0][0];
+    REGISTER       T * IMATH_RESTRICT cp = &c.x[0][0];
 
-    register T a0, a1, a2, a3;
+    REGISTER T a0, a1, a2, a3;
 
     a0 = ap[0];
     a1 = ap[1];
