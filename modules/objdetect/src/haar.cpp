@@ -42,6 +42,7 @@
 /* Haar features calculation */
 
 #include "precomp.hpp"
+#include "opencv2/imgproc.hpp"
 #include "opencv2/imgproc/imgproc_c.h"
 #include "opencv2/objdetect/objdetect_c.h"
 #include <stdio.h>

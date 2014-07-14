@@ -293,7 +293,7 @@ static bool matchTemplateNaive_CCORR(InputArray _image, InputArray _templ, Outpu
     k.args(ocl::KernelArg::ReadOnlyNoSize(image), ocl::KernelArg::ReadOnly(templ),
            ocl::KernelArg::WriteOnly(result));
 
-    size_t globalsize[2] = { (result.cols+pxPerWIx-1)/pxPerWIx, result.rows};
+    size_t globalsize[2] = { static_cast<size_t>((result.cols+pxPerWIx-1)/pxPerWIx), static_cast<size_t>(result.rows)};
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -345,7 +345,7 @@ static bool matchTemplate_CCORR_NORMED(InputArray _image, InputArray _templ, Out
     k.args(ocl::KernelArg::ReadOnlyNoSize(image_sqsums), ocl::KernelArg::ReadWrite(result),
            templ.rows, templ.cols, ocl::KernelArg::PtrReadOnly(templ_sqsum));
 
-    size_t globalsize[2] = { result.cols, result.rows };
+    size_t globalsize[2] = { static_cast<size_t>(result.cols), static_cast<size_t>(result.rows) };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -370,7 +370,7 @@ static bool matchTemplateNaive_SQDIFF(InputArray _image, InputArray _templ, Outp
     k.args(ocl::KernelArg::ReadOnlyNoSize(image), ocl::KernelArg::ReadOnly(templ),
            ocl::KernelArg::WriteOnly(result));
 
-    size_t globalsize[2] = { result.cols, result.rows };
+    size_t globalsize[2] = { static_cast<size_t>(result.cols), static_cast<size_t>(result.rows) };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -434,7 +434,7 @@ static bool matchTemplate_SQDIFF_NORMED(InputArray _image, InputArray _templ, Ou
     k.args(ocl::KernelArg::ReadOnlyNoSize(image_sqsums), ocl::KernelArg::ReadWrite(result),
            templ.rows, templ.cols, ocl::KernelArg::PtrReadOnly(templ_sqsum));
 
-    size_t globalsize[2] = { result.cols, result.rows };
+    size_t globalsize[2] = { static_cast<size_t>(result.cols), static_cast<size_t>(result.rows) };
 
     return k.run(2, globalsize, NULL, false);
 }
@@ -472,7 +472,7 @@ static bool matchTemplate_CCOEFF(InputArray _image, InputArray _templ, OutputArr
 
        k.args(ocl::KernelArg::ReadOnlyNoSize(image_sums), ocl::KernelArg::ReadWrite(result), templ.rows, templ.cols, templ_sum);    }
 
-    size_t globalsize[2] = { result.cols, result.rows };
+    size_t globalsize[2] = { static_cast<size_t>(result.cols), static_cast<size_t>(result.rows) };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -540,7 +540,7 @@ static bool matchTemplate_CCOEFF_NORMED(InputArray _image, InputArray _templ, Ou
                    ocl::KernelArg::ReadWrite(result), templ.rows, templ.cols, scale,
                    templ_sum, templ_sqsum_sum);    }
 
-    size_t globalsize[2] = { result.cols, result.rows };
+    size_t globalsize[2] = { static_cast<size_t>(result.cols), static_cast<size_t>(result.rows) };
     return k.run(2, globalsize, NULL, false);
 }
 
