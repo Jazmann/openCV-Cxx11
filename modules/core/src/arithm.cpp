@@ -791,9 +791,10 @@ static void add16s( const short* src1, size_t step1,
 #endif
 }
 
+#if CV_32U_EXISTS
 static void add32u( const unsigned int* src1, size_t step1,
-                   const unsigned int* src2, size_t step2,
-                   unsigned int* dst, size_t step, Size sz, void* )
+                    const unsigned int* src2, size_t step2,
+                    unsigned int* dst, size_t step, Size sz, void* )
 {
 
 #if SIMD_32U
@@ -802,6 +803,7 @@ static void add32u( const unsigned int* src1, size_t step1,
     (vBinNOp32<CV_32U_TYPE, OpAdd<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void add32s( const int* src1, size_t step1,
                     const int* src2, size_t step2,
@@ -815,9 +817,10 @@ static void add32s( const int* src1, size_t step1,
 }
 
 
+#if CV_64U_EXISTS
 static void add64u( const unsigned long long int* src1, size_t step1,
-                   const unsigned long long int* src2, size_t step2,
-                   unsigned long long int* dst, size_t step, Size sz, void* )
+                    const unsigned long long int* src2, size_t step2,
+                    unsigned long long int* dst, size_t step, Size sz, void* )
     {
 #if SIMD_64U
         vBinOp64<CV_64U_TYPE, OpAdd<CV_64U_TYPE>, IF_SIMD(VAdd<CV_64U_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
@@ -825,17 +828,19 @@ static void add64u( const unsigned long long int* src1, size_t step1,
         (vBinNOp64<CV_64U_TYPE, OpAdd<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
-
+#endif
+#if CV_64S_EXISTS
 static void add64s( const long long int* src1, size_t step1,
-                   const long long int* src2, size_t step2,
-                   long long int* dst, size_t step, Size sz, void* )
+                    const long long int* src2, size_t step2,
+                    long long int* dst, size_t step, Size sz, void* )
     {
 #if SIMD_64S
         vBinOp64<CV_64S_TYPE, OpAdd<CV_64S_TYPE>, IF_SIMD(VAdd<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz);
 #else
         vBinNOp64<CV_64S_TYPE, OpAdd<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz);
 #endif
-}
+    }
+#endif
 
 
 static void add32f( const float* src1, size_t step1,
@@ -928,6 +933,7 @@ static void sub16s( const short* src1, size_t step1,
 #endif
 }
 
+#if CV_32U_EXISTS
 static void sub32u( const unsigned int* src1, size_t step1,
                    const unsigned int* src2, size_t step2,
                    unsigned int* dst, size_t step, Size sz, void* )
@@ -938,6 +944,7 @@ static void sub32u( const unsigned int* src1, size_t step1,
     (vBinNOp32<CV_32U_TYPE, OpSub<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void sub32s( const int* src1, size_t step1,
                     const int* src2, size_t step2,
@@ -950,6 +957,7 @@ static void sub32s( const int* src1, size_t step1,
 #endif
 }
 
+#if CV_64U_EXISTS
 static void sub64u( const unsigned long long int* src1, size_t step1,
                     const unsigned long long int* src2, size_t step2,
                     unsigned long long int* dst, size_t step, Size sz, void* )
@@ -960,7 +968,8 @@ static void sub64u( const unsigned long long int* src1, size_t step1,
     (vBinNOp64<CV_64U_TYPE, OpSub<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
-
+#endif
+#if CV_64S_EXISTS
 static void sub64s( const long long int* src1, size_t step1,
                     const long long int* src2, size_t step2,
                     long long int* dst, size_t step, Size sz, void* )
@@ -971,6 +980,7 @@ static void sub64s( const long long int* src1, size_t step1,
     (vBinNOp64<CV_64S_TYPE, OpSub<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void sub32f( const float* src1, size_t step1,
                    const float* src2, size_t step2,
@@ -1084,6 +1094,7 @@ static void max16s( const short* src1, size_t step1,
 }
 
 
+#if CV_32U_EXISTS
 static void max32u( const CV_32U_TYPE * src1, size_t step1,
                     const CV_32U_TYPE * src2, size_t step2,
                     CV_32U_TYPE * dst, size_t step, Size sz, void* )
@@ -1094,6 +1105,7 @@ static void max32u( const CV_32U_TYPE * src1, size_t step1,
     (vBinNOp32<CV_32U_TYPE, OpMax<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void max32s( const CV_32S_TYPE * src1, size_t step1,
                     const CV_32S_TYPE * src2, size_t step2,
@@ -1106,6 +1118,7 @@ static void max32s( const CV_32S_TYPE * src1, size_t step1,
 #endif
 }
 
+#if CV_64U_EXISTS
 static void max64u( const CV_64U_TYPE * src1, size_t step1,
                     const CV_64U_TYPE * src2, size_t step2,
                     CV_64U_TYPE * dst, size_t step, Size sz, void* )
@@ -1116,7 +1129,8 @@ static void max64u( const CV_64U_TYPE * src1, size_t step1,
     (vBinNOp64<CV_64U_TYPE, OpMax<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
-
+#endif
+#if CV_64S_EXISTS
 static void max64s( const CV_64S_TYPE * src1, size_t step1,
                     const CV_64S_TYPE * src2, size_t step2,
                     CV_64S_TYPE * dst, size_t step, Size sz, void* )
@@ -1127,6 +1141,7 @@ static void max64s( const CV_64S_TYPE * src1, size_t step1,
     (vBinNOp64<CV_64S_TYPE, OpMax<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 
 static void max32f( const float* src1, size_t step1,
@@ -1267,6 +1282,7 @@ static void min16s( const short* src1, size_t step1,
 #endif
 }
 
+#if CV_32U_EXISTS
 static void min32u( const CV_32U_TYPE * src1, size_t step1,
                    const CV_32U_TYPE * src2, size_t step2,
                    CV_32U_TYPE * dst, size_t step, Size sz, void* )
@@ -1277,6 +1293,7 @@ static void min32u( const CV_32U_TYPE * src1, size_t step1,
     (vBinNOp32<CV_32U_TYPE, OpMin<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void min32s( const CV_32S_TYPE * src1, size_t step1,
                    const CV_32S_TYPE * src2, size_t step2,
@@ -1289,6 +1306,7 @@ static void min32s( const CV_32S_TYPE * src1, size_t step1,
 #endif
 }
 
+#if CV_64U_EXISTS
 static void min64u( const CV_64U_TYPE * src1, size_t step1,
                     const CV_64U_TYPE * src2, size_t step2,
                     CV_64U_TYPE * dst, size_t step, Size sz, void* )
@@ -1299,7 +1317,8 @@ static void min64u( const CV_64U_TYPE * src1, size_t step1,
     (vBinNOp64<CV_64U_TYPE, OpMin<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
-
+#endif
+#if CV_64S_EXISTS
 static void min64s( const CV_64S_TYPE * src1, size_t step1,
                     const CV_64S_TYPE * src2, size_t step2,
                     CV_64S_TYPE * dst, size_t step, Size sz, void* )
@@ -1310,6 +1329,7 @@ static void min64s( const CV_64S_TYPE * src1, size_t step1,
     (vBinNOp64<CV_64S_TYPE, OpMin<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void min32f( const float* src1, size_t step1,
                     const float* src2, size_t step2,
@@ -1425,6 +1445,7 @@ static void absdiff16s( const short* src1, size_t step1,
 #endif
 }
 
+#if CV_32U_EXISTS
 static void absdiff32u( const CV_32U_TYPE * src1, size_t step1,
                         const CV_32U_TYPE * src2, size_t step2,
                               CV_32U_TYPE * dst,  size_t step, Size sz, void* )
@@ -1435,6 +1456,7 @@ static void absdiff32u( const CV_32U_TYPE * src1, size_t step1,
     (vBinNOp32<CV_32U_TYPE, OpAbsDiff<CV_32U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void absdiff32s( const CV_32S_TYPE * src1, size_t step1,
                         const CV_32S_TYPE * src2, size_t step2,
@@ -1447,6 +1469,7 @@ static void absdiff32s( const CV_32S_TYPE * src1, size_t step1,
 #endif
 }
 
+#if CV_64U_EXISTS
 static void absdiff64u( const CV_64U_TYPE * src1, size_t step1,
                         const CV_64U_TYPE * src2, size_t step2,
                               CV_64U_TYPE * dst,  size_t step, Size sz, void* )
@@ -1457,18 +1480,19 @@ static void absdiff64u( const CV_64U_TYPE * src1, size_t step1,
     (vBinNOp64<CV_64U_TYPE, OpAbsDiff<CV_64U_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
-
+#endif
+#if CV_64S_EXISTS
 static void absdiff64s( const CV_64S_TYPE * src1, size_t step1,
                         const CV_64S_TYPE * src2, size_t step2,
                               CV_64S_TYPE * dst,  size_t step, Size sz, void* )
 {
-
 #if SIMD_64S
     ( vBinOp64<CV_64S_TYPE, OpAbsDiff<CV_64S_TYPE>, IF_SIMD(VAbsDiff<CV_64S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
 #else
     (vBinNOp64<CV_64S_TYPE, OpAbsDiff<CV_64S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
+#endif
 
 static void absdiff32f( const float* src1, size_t step1,
                         const float* src2, size_t step2,
@@ -2676,11 +2700,13 @@ static void mul16s( const short* src1, size_t step1, const short* src2, size_t s
     mul_(src1, step1, src2, step2, dst, step, sz, fscale);
 }
 
+#if CV_32U_EXISTS
 static void mul32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
                    unsigned int* dst, size_t step, Size sz, void* scale)
 {
     mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+#endif
 
 static void mul32s( const int* src1, size_t step1, const int* src2, size_t step2,
                     int* dst, size_t step, Size sz, void* scale)
@@ -2688,17 +2714,20 @@ static void mul32s( const int* src1, size_t step1, const int* src2, size_t step2
     mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+#if CV_64U_EXISTS
 static void mul64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
                    unsigned long long int* dst, size_t step, Size sz, void* scale)
 {
     mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
-
+#endif
+#if CV_64S_EXISTS
 static void mul64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                    long long int* dst, size_t step, Size sz, void* scale)
 {
     mul_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+#endif
 
 static void mul32f( const float* src1, size_t step1, const float* src2, size_t step2,
                     float* dst, size_t step, Size sz, void* scale)
@@ -2748,11 +2777,13 @@ static void div16s( const short* src1, size_t step1, const short* src2, size_t s
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+#if CV_32U_EXISTS
 static void div32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
                    unsigned int* dst, size_t step, Size sz, void* scale)
 {
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+#endif
 
 static void div32s( const int* src1, size_t step1, const int* src2, size_t step2,
                     int* dst, size_t step, Size sz, void* scale)
@@ -2760,17 +2791,20 @@ static void div32s( const int* src1, size_t step1, const int* src2, size_t step2
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+#if CV_64U_EXISTS
 static void div64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
                    unsigned long long int* dst, size_t step, Size sz, void* scale)
 {
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
-
+#endif
+#if CV_64S_EXISTS
 static void div64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                    long long int* dst, size_t step, Size sz, void* scale)
 {
     div_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+#endif
 
 static void div32f( const float* src1, size_t step1, const float* src2, size_t step2,
                     float* dst, size_t step, Size sz, void* scale)
@@ -2808,11 +2842,13 @@ static void recip16s( const short* src1, size_t step1, const short* src2, size_t
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+#if CV_32U_EXISTS
 static void recip32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
                    unsigned int* dst, size_t step, Size sz, void* scale)
 {
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+#endif
 
 static void recip32s( const int* src1, size_t step1, const int* src2, size_t step2,
                    int* dst, size_t step, Size sz, void* scale)
@@ -2820,17 +2856,20 @@ static void recip32s( const int* src1, size_t step1, const int* src2, size_t ste
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
 
+#if CV_64U_EXISTS
 static void recip64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
                      unsigned long long int* dst, size_t step, Size sz, void* scale)
 {
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
-
+#endif
+#if CV_64S_EXISTS
 static void recip64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                      long long int* dst, size_t step, Size sz, void* scale)
 {
     recip_(src1, step1, src2, step2, dst, step, sz, *(const double*)scale);
 }
+#endif
 
 
 static void recip32f( const float* src1, size_t step1, const float* src2, size_t step2,
@@ -3033,11 +3072,13 @@ static void addWeighted16s( const short* src1, size_t step1, const short* src2, 
     addWeighted_<short, float>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
 
+#if CV_32U_EXISTS
 static void addWeighted32u( const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
                            unsigned int* dst, size_t step, Size sz, void* scalars )
 {
     addWeighted_<unsigned int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
+#endif
 
 static void addWeighted32s( const int* src1, size_t step1, const int* src2, size_t step2,
                             int* dst, size_t step, Size sz, void* scalars )
@@ -3045,17 +3086,20 @@ static void addWeighted32s( const int* src1, size_t step1, const int* src2, size
     addWeighted_<int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
 
+#if CV_64U_EXISTS
 static void addWeighted64u( const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
                            unsigned long long int* dst, size_t step, Size sz, void* scalars )
 {
     addWeighted_<unsigned long long int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
-
+#endif
+#if CV_64S_EXISTS
 static void addWeighted64s( const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                            long long int* dst, size_t step, Size sz, void* scalars )
 {
     addWeighted_<long long int, double>(src1, step1, src2, step2, dst, step, sz, scalars);
 }
+#endif
 
 static void addWeighted32f( const float* src1, size_t step1, const float* src2, size_t step2,
                             float* dst, size_t step, Size sz, void* scalars )
@@ -3372,11 +3416,13 @@ static void cmp16s(const short* src1, size_t step1, const short* src2, size_t st
     }
 }
 
+#if CV_32U_EXISTS
 static void cmp32u(const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
                    uchar* dst, size_t step, Size size, void* _cmpop)
 {
     cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
 }
+#endif
 
 static void cmp32s(const int* src1, size_t step1, const int* src2, size_t step2,
                    uchar* dst, size_t step, Size size, void* _cmpop)
@@ -3384,17 +3430,20 @@ static void cmp32s(const int* src1, size_t step1, const int* src2, size_t step2,
     cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
 }
 
+#if CV_64U_EXISTS
 static void cmp64u(const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
                    uchar* dst, size_t step, Size size, void* _cmpop)
 {
     cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
 }
-
+#endif
+#if CV_64S_EXISTS
 static void cmp64s(const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                    uchar* dst, size_t step, Size size, void* _cmpop)
 {
     cmp_(src1, step1, src2, step2, dst, step, size, *(int*)_cmpop);
 }
+#endif
 
 static void cmp32f(const float* src1, size_t step1, const float* src2, size_t step2,
                   uchar* dst, size_t step, Size size, void* _cmpop)
@@ -3913,11 +3962,13 @@ static void inRange16s(const short* src1, size_t step1, const short* src2, size_
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
 
+#if CV_32U_EXISTS
 static void inRange32u(const unsigned int* src1, size_t step1, const unsigned int* src2, size_t step2,
                        const unsigned int* src3, size_t step3, uchar* dst, size_t step, Size size)
 {
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
+#endif
 
 static void inRange32s(const int* src1, size_t step1, const int* src2, size_t step2,
                        const int* src3, size_t step3, uchar* dst, size_t step, Size size)
@@ -3925,17 +3976,20 @@ static void inRange32s(const int* src1, size_t step1, const int* src2, size_t st
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
 
+#if CV_64U_EXISTS
 static void inRange64u(const unsigned long long int* src1, size_t step1, const unsigned long long int* src2, size_t step2,
                        const unsigned long long int* src3, size_t step3, uchar* dst, size_t step, Size size)
 {
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
-
+#endif
+#if CV_64S_EXISTS
 static void inRange64s(const long long int* src1, size_t step1, const long long int* src2, size_t step2,
                        const long long int* src3, size_t step3, uchar* dst, size_t step, Size size)
 {
     inRange_(src1, step1, src2, step2, src3, step3, dst, step, size);
 }
+#endif
 
 static void inRange32f(const float* src1, size_t step1, const float* src2, size_t step2,
                        const float* src3, size_t step3, uchar* dst, size_t step, Size size)
