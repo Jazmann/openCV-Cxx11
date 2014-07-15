@@ -35,6 +35,12 @@ endif(NOT CMAKE_TOOLCHAIN_FILE)
 if(POLICY CMP0022)
   cmake_policy(SET CMP0022 OLD)
 endif()
+if(POLICY CMP0026)
+  cmake_policy(SET CMP0026 OLD)
+endif()
+if(POLICY CMP0045)
+  cmake_policy(SET CMP0045 OLD)
+endif()
 
 # must go before the project command
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Configs" FORCE)
@@ -197,6 +203,7 @@ OCV_OPTION(INSTALL_TESTS            "Install accuracy and performance test binar
 
 # OpenCV build options
 # ===================================================
+OCV_OPTION(ENABLE_CXX11               "Use C++11 features"                                       ON   IF (COMPILER_SUPPORTS_CXX11) )
 OCV_OPTION(ENABLE_PRECOMPILED_HEADERS "Use precompiled headers"                                  ON   IF (NOT IOS) )
 OCV_OPTION(ENABLE_SOLUTION_FOLDERS    "Solution folder in Visual Studio or in other IDEs"        (MSVC_IDE OR CMAKE_GENERATOR MATCHES Xcode) )
 OCV_OPTION(ENABLE_PROFILING           "Enable profiling in the GCC compiler (Add flags: -g -pg)" OFF  IF CMAKE_COMPILER_IS_GNUCXX )
@@ -379,9 +386,6 @@ endif()
 if(CMAKE_GENERATOR MATCHES "Xcode")
   message(STATUS "COMBINE_HIDPI_IMAGES YES")
   set(COMBINE_HIDPI_IMAGES YES)
-  message("Setting up Xcode for C++11 with libc++.")
- set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++0x")
- set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
 endif()
 
 include(cmake/OpenCVCompilerOptions.cmake)
