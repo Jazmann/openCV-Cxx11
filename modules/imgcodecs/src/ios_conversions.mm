@@ -40,7 +40,7 @@
 //
 //M*/
 
-#import "opencv2/highgui/cap_ios.h"
+#import "../../highgui/include/opencv2/highgui/cap_ios.h"
 #include "precomp.hpp"
 
 UIImage* MatToUIImage(const cv::Mat& image) {
