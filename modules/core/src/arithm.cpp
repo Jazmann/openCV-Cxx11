@@ -946,7 +946,7 @@ static void sub32s( const int* src1, size_t step1,
 #if SIMD_32S
     (vBinOp32<CV_32S_TYPE, OpSub<CV_32S_TYPE>, IF_SIMD(VSub<CV_32S_TYPE>)>(src1, step1, src2, step2, dst, step, sz));
 #else
-    (vBinOp32<CV_32S_TYPE, OpSub<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
+    (vBinNOp32<CV_32S_TYPE, OpSub<CV_32S_TYPE> >(src1, step1, src2, step2, dst, step, sz));
 #endif
 }
 
