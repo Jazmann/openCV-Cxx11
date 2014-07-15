@@ -36,7 +36,7 @@ def build_opencv(srcroot, buildroot, target, arch):
     currdir = os.getcwd()
     os.chdir(builddir)
     # for some reason, if you do not specify CMAKE_BUILD_TYPE, it puts libs to "RELEASE" rather than "Release"
-    cmakeargs = ("-GXcode " +
+    cmakeargs = ("-GXcode -Wno-dev" +
                 "-DCMAKE_BUILD_TYPE=Release " +
                 "-DCMAKE_TOOLCHAIN_FILE=%s/platforms/ios/cmake/Toolchains/Toolchain-%s_Xcode.cmake " +
                 "-DBUILD_opencv_world=ON " +
