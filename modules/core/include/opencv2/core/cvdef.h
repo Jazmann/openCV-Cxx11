@@ -604,7 +604,7 @@ CV_INLINE int cvRound( double value )
 #endif
 }
 
-CV_INLINE int cv64Round( double value )
+CV_INLINE long long int cv64Round( double value )
 {
     double intpart, fractpart;
     fractpart = modf(value, &intpart);
