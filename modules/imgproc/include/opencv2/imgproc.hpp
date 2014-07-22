@@ -621,7 +621,7 @@ template<int src_t, int dst_t> class CV_EXPORTS colorSpaceConverter
         int indxA{0}, indxB{1}, indxC{2}; // indices for the axis.
         int dstRGBIndices[3]; // indices for the destination 'RGB' channels
         int srcRGBIndices[3]; // indices for the source RGB channels
-        Vec<wrkType, 3> qC_wrk; // The center point for the distribution function in the rotated color space
+        Vec<sWrkType, 3> qC_wrk; // The center point for the distribution function in the rotated color space
         Vec<double, 3>  uC_wrk; // The center point for the distribution function in the rotated color space scaled to 0:1
         Vec<srcType, 3> qC_src; // The center point for the distribution function in the source color space
         Vec<double, 3>  uC_src; // The center point for the distribution function in the source color space scaled to 0:1
@@ -632,15 +632,16 @@ template<int src_t, int dst_t> class CV_EXPORTS colorSpaceConverter
         cv::Matx<double, 3, 3> rR;
 
         cv::Matx<sWrkType, 3, 3> fR;
-        Vec<sWrkType, 3> RRange, RMin, RMax;
+        Vec< wrkType, 3> RRange;
+        Vec<sWrkType, 3> RMin, RMax;
 
         sWrkType qfR[3][3];
         double fScale[3], scale[3];
 
         Vec<double, dstInfo::channels> uRRange, uRMin, uRMax; // The range info for the result of the transformed space. The axis lengths and positions in the 0:1 space.
 
-        distributeErfParameters<wrkInfo::dataType, dstInfo::dataType> redParam, greenParam, blueParam;
-        depthConverter<wrkInfo::dataType, dstInfo::dataType> *redScale, *greenScale, *blueScale;
+        distributeErfParameters<sWrkInfo::dataType, dstInfo::dataType> redParam, greenParam, blueParam;
+        depthConverter<sWrkInfo::dataType, dstInfo::dataType> *redScale, *greenScale, *blueScale;
 
         RGB2Rot_int(); // todo set default distribution functions.
 

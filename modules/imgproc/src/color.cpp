@@ -4682,11 +4682,11 @@ template class cv::colorSpaceConverter<CV_8UC4,CV_8UC3>;
 // ***************************************************************************************************************************
 
 template<int src_t, int dst_t> void RGB2Rot_int<src_t, dst_t>::setRGBIndices(int srcBlueIdx, int dstBlueIdx){
-    cv::Matx<sWrkType, dstInfo::channels, srcInfo::channels> _fR;
-    Vec<sWrkType, dstInfo::channels> _RRange, _RMin;
+    cv::Matx<sWrkType, 3, 3> _fR;
+    Vec<sWrkType, 3> _RRange, _RMin;
 
-    for (int i=0; i < dstInfo::channels; i++) {
-        for (int j=0; j < srcInfo::channels; j++) {
+    for (int i=0; i < 3; i++) {
+        for (int j=0; j < 3; j++) {
             _fR(i,j) = fR(i,j);
         }
         _RRange[i] = RRange[i];
@@ -4704,47 +4704,47 @@ template<int src_t, int dst_t> void RGB2Rot_int<src_t, dst_t>::setRGBIndices(int
     }
 };
 
-    template<int src_t, int dst_t> Vec<typename cv::Signed_Work_Type<src_t, dst_t>::type, 3> cv::RGB2Rot_int<src_t, dst_t>::toWrk(Vec<double, 3> pnt){
-        Vec<typename cv::Signed_Work_Type<src_t, dst_t>::type, 3> out;
-        out[0] = RRange[0] * pnt(0)+ RMin[0];
-        out[1] = RRange[1] * pnt(1)+ RMin[1];
-        out[2] = RRange[2] * pnt(2)+ RMin[2];
-        return out;
-    };
-    template<int src_t, int dst_t> Vec<typename cv::Data_Type<src_t>::type, 3> cv::RGB2Rot_int<src_t, dst_t>::toSrc(Vec<double, 3> pnt){
-        Vec<typename cv::Data_Type<src_t>::type, 3> out;
-        out[0] = srcType((srcInfo::max - srcInfo::min) * pnt(0)+ srcInfo::min);
-        out[1] = srcType((srcInfo::max - srcInfo::min) * pnt(1)+ srcInfo::min);
-        out[2] = srcType((srcInfo::max - srcInfo::min) * pnt(2)+ srcInfo::min);
-        return out;
-    };
-    template<int src_t, int dst_t> Vec<typename cv::Data_Type<dst_t>::type, 3> cv::RGB2Rot_int<src_t, dst_t>::toDst(Vec<double, 3> pnt){
-        Vec<typename cv::Data_Type<dst_t>::type, 3> out;
-        out[0] = dstType((dstInfo::max - dstInfo::min) * pnt(0)+ dstInfo::min);
-        out[1] = dstType((dstInfo::max - dstInfo::min) * pnt(1)+ dstInfo::min);
-        out[2] = dstType((dstInfo::max - dstInfo::min) * pnt(2)+ dstInfo::min);
-        return out;
-    };
+template<int src_t, int dst_t> Vec<typename cv::Signed_Work_Type<src_t, dst_t>::type, 3> cv::RGB2Rot_int<src_t, dst_t>::toWrk(Vec<double, 3> pnt){
+    Vec<typename cv::Signed_Work_Type<src_t, dst_t>::type, 3> out;
+    out[0] = RRange[0] * pnt(0)+ RMin[0];
+    out[1] = RRange[1] * pnt(1)+ RMin[1];
+    out[2] = RRange[2] * pnt(2)+ RMin[2];
+    return out;
+};
+template<int src_t, int dst_t> Vec<typename cv::Data_Type<src_t>::type, 3> cv::RGB2Rot_int<src_t, dst_t>::toSrc(Vec<double, 3> pnt){
+    Vec<typename cv::Data_Type<src_t>::type, 3> out;
+    out[0] = srcType((srcInfo::max - srcInfo::min) * pnt(0)+ srcInfo::min);
+    out[1] = srcType((srcInfo::max - srcInfo::min) * pnt(1)+ srcInfo::min);
+    out[2] = srcType((srcInfo::max - srcInfo::min) * pnt(2)+ srcInfo::min);
+    return out;
+};
+template<int src_t, int dst_t> Vec<typename cv::Data_Type<dst_t>::type, 3> cv::RGB2Rot_int<src_t, dst_t>::toDst(Vec<double, 3> pnt){
+    Vec<typename cv::Data_Type<dst_t>::type, 3> out;
+    out[0] = dstType((dstInfo::max - dstInfo::min) * pnt(0)+ dstInfo::min);
+    out[1] = dstType((dstInfo::max - dstInfo::min) * pnt(1)+ dstInfo::min);
+    out[2] = dstType((dstInfo::max - dstInfo::min) * pnt(2)+ dstInfo::min);
+    return out;
+};
 
-    template<int src_t, int dst_t> Vec<double, 3> cv::RGB2Rot_int<src_t, dst_t>::fromRot(Vec<double, 3> pnt){
-        Vec<double, 3> out = pnt;
-        out[0] +=   uRMin[0]; out[1] +=   uRMin[1]; out[2] +=   uRMin[2];
-        out[0] /= nRScale[0]; out[1] /= nRScale[1]; out[2] /= nRScale[2];
-        out[0] *= rRScale[0]; out[1] *= rRScale[1]; out[2] *= rRScale[2];// column multiplication is consistent with use of the inverse equal to the transpose
-        return rR.t() * out;
-    };
-    template<int src_t, int dst_t> Vec<double, 3> cv::RGB2Rot_int<src_t, dst_t>::toRot(Vec<double, 3> pnt){
-        Vec<double, 3> out = rR * pnt;
-        out[0] *= rRScale[0] * nRScale[0]; out[1] *= rRScale[1] * nRScale[1]; out[2] *= rRScale[2] * nRScale[2];
-        out[0] -=   uRMin[0];              out[1] -=   uRMin[1];              out[2] -= uRMin[2];
-        return out;
-    };
+template<int src_t, int dst_t> Vec<double, 3> cv::RGB2Rot_int<src_t, dst_t>::fromRot(Vec<double, 3> pnt){
+    Vec<double, 3> out = pnt;
+    out[0] +=   uRMin[0]; out[1] +=   uRMin[1]; out[2] +=   uRMin[2];
+    out[0] /= nRScale[0]; out[1] /= nRScale[1]; out[2] /= nRScale[2];
+    out[0] *= rRScale[0]; out[1] *= rRScale[1]; out[2] *= rRScale[2];// column multiplication is consistent with use of the inverse equal to the transpose
+    return rR.t() * out;
+};
+template<int src_t, int dst_t> Vec<double, 3> cv::RGB2Rot_int<src_t, dst_t>::toRot(Vec<double, 3> pnt){
+    Vec<double, 3> out = rR * pnt;
+    out[0] *= rRScale[0] * nRScale[0]; out[1] *= rRScale[1] * nRScale[1]; out[2] *= rRScale[2] * nRScale[2];
+    out[0] -=   uRMin[0];              out[1] -=   uRMin[1];              out[2] -= uRMin[2];
+    return out;
+};
 
-template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformFromAngle(double theta )
-    {
+template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformFromAngle(double theta ){
     // theta is the rotation in radians about the luminocity axis
     // 0 <= theta < 2 Pi and theta should have been adjusted using
     // theta = adjustTheta(theta,nBits);
+    CV_Assert(0<=theta && theta <= 2*CV_PI);
 
     int nBits = srcInfo::bitDepth -1; // The number of bits in which to store the numeric value of the matrix (-1 to account for the sign bit)
     double rRange = std::pow(2,nBits);
@@ -4755,7 +4755,7 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
     double Csc   = 1./std::sin(theta);    double CscPlus  = 1./std::sin(CV_PI/6. + theta);    double CscMinus = 1./std::sin(CV_PI/6. - theta);
     double Sec   = 1./std::cos(theta);    double SecPlus  = 1./std::cos(CV_PI/6. + theta);    double SecMinus = 1./std::cos(CV_PI/6. - theta);
 
-    rR = cv::Matx<double, 3, 3>( 1.,       1.,   1., \
+    rR = cv::Matx<double, 3, 3>( 1.0,      1.0,   1.0, \
                                 -SinPlus,  Cos, -SinMinus, \
                                 -CosPlus, -Sin,  CosMinus );
 
@@ -4776,9 +4776,9 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
                                           sWrkType(rRange/2.), sWrkType(-(rRange*Cos*CscPlus)/2.), sWrkType( (rRange*CscPlus*SinMinus)/2.),\
                                           sWrkType(rRange/2.), sWrkType( (rRange*Sin*SecPlus)/2.), sWrkType(-(rRange*SecPlus*CosMinus)/2.)
                                           );
-            RRange[0] =  sWrkType(3 * srcInfo::max);                               RMin[0] = 0;                           RMax[0] = RRange[0];
-            RRange[1] =  sWrkType(    srcInfo::max * rRange * CscPlus * Cos);      RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
-            RRange[2] =  sWrkType(    srcInfo::max * rRange * SecPlus * CosMinus); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
+            RRange[0] =  wrkType(srcInfo::max) * wrkType(3);                           RMin[0] = 0;                           RMax[0] = RRange[0];
+            RRange[1] =  wrkType(srcInfo::max) * wrkType(rRange * CscPlus * Cos);      RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
+            RRange[2] =  wrkType(srcInfo::max) * wrkType(rRange * SecPlus * CosMinus); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
             break;
         case 1:
             fRScale = Vec<double, 3>(1,(2*Cos)/rRange,(-2*Sin)/rRange);
@@ -4787,9 +4787,9 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
                                           sWrkType(-(rRange*Sec*SinPlus)/2.), sWrkType(rRange/2.), sWrkType(-(rRange*Sec*SinMinus)/2.),\
                                           sWrkType( (rRange*Csc*CosPlus)/2.), sWrkType(rRange/2.), sWrkType(-(rRange*Csc*CosMinus)/2.)
                                           );
-            RRange[0] = sWrkType( 3 * srcInfo::max);                           RMin[0] = 0;                           RMax[0] = RRange[0];
-            RRange[1] = sWrkType(     srcInfo::max * rRange * SinPlus  * Sec); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
-            RRange[2] = sWrkType(     srcInfo::max * rRange * CosMinus * Csc); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
+            RRange[0] = wrkType(srcInfo::max) * wrkType(3);                       RMin[0] = 0;                           RMax[0] = RRange[0];
+            RRange[1] = wrkType(srcInfo::max) * wrkType(rRange * SinPlus  * Sec); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
+            RRange[2] = wrkType(srcInfo::max) * wrkType(rRange * CosMinus * Csc); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
 
 
             break;
@@ -4801,21 +4801,21 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
                                           sWrkType(-(rRange*SecMinus*CosPlus)/2.), sWrkType(-(rRange*Sin*SecMinus)/2.), sWrkType(rRange/2.)
                                           );
 
-            RRange[0] = sWrkType( 3 * srcInfo::max);                               RMin[0] = 0;                           RMax[0] = RRange[0];
-            RRange[1] = sWrkType(-1 * srcInfo::max * rRange * CscMinus * SinPlus); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
-            RRange[2] = sWrkType(     srcInfo::max * rRange * SecMinus * Sin);     RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
+            RRange[0] = wrkType(srcInfo::max) * wrkType( 3 );                              RMin[0] = 0;                           RMax[0] = RRange[0];
+            RRange[1] = wrkType(srcInfo::max) * wrkType(-1 * rRange * CscMinus * SinPlus); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
+            RRange[2] = wrkType(srcInfo::max) * wrkType(     rRange * SecMinus * Sin);     RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
 
             break;
         default:
             fRScale = Vec<double, 3>();
             fR = cv::Matx<sWrkType, 3, 3>();
-            RRange = Vec<sWrkType, 3>();  RMin = Vec<sWrkType, 3>();  RMax = Vec<sWrkType, 3>();
+            RRange = Vec<wrkType, 3>();  RMin = Vec<sWrkType, 3>();  RMax = Vec<sWrkType, 3>();
     };
 
      fScale[0] = rRScale[0] * fRScale[0];     fScale[1] = rRScale[1] * fRScale[1];     fScale[2] = rRScale[2] * fRScale[2];
       scale[0] = rRScale[0] * nRScale[0];      scale[1] = rRScale[1] * nRScale[1];      scale[2] = rRScale[2] * nRScale[2];
 
-    uRRange[0] = 1.0; uRMin[0] = 0;    uRMax[0] = 1.0;
+    uRRange[0] = 1.0; uRMin[0] =  0.0; uRMax[0] = 1.0;
     uRRange[1] = 1.0; uRMin[1] = -0.5; uRMax[1] = 0.5;
     uRRange[2] = 1.0; uRMin[2] = -0.5; uRMax[2] = 0.5;
 
@@ -4866,19 +4866,19 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setRedDistrib
     setRedDistributionErf(qC_wrk[dstRGBIndices[0]],uG[dstRGBIndices[0]]);
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setRedDistributionErf(  int center, double gradient){
-    redScale = new distributeErf<wrkInfo::dataType, dstInfo::dataType> (   gradient, center, wrkType((srcInfo::max - srcInfo::min) * RMin[0]), wrkType((srcInfo::max - srcInfo::min) * (RMin[0]+RRange[0])), dstType(dstInfo::min), dstType(dstInfo::max));
+    redScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> (   gradient, center, sWrkType((srcInfo::max - srcInfo::min) * RMin[0]), sWrkType((srcInfo::max - srcInfo::min) * (RMax[0])), dstType(dstInfo::min), dstType(dstInfo::max));
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setGreenDistributionErf(){
     setGreenDistributionErf(qC_wrk[dstRGBIndices[1]],uG[dstRGBIndices[1]]);
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setGreenDistributionErf(int center, double gradient){
-    greenScale = new distributeErf<wrkInfo::dataType, dstInfo::dataType> ( gradient, center, wrkType((srcInfo::max - srcInfo::min) * RMin[1]), wrkType((srcInfo::max - srcInfo::min) * (RMin[1]+RRange[1])), dstType(dstInfo::min), dstType(dstInfo::max));
+    greenScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> ( gradient, center, sWrkType((srcInfo::max - srcInfo::min) * RMin[1]), sWrkType((srcInfo::max - srcInfo::min) * (RMax[1])), dstType(dstInfo::min), dstType(dstInfo::max));
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setBlueDistributionErf(){
     setBlueDistributionErf(qC_wrk[dstRGBIndices[2]],uG[dstRGBIndices[2]]);
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setBlueDistributionErf( int center, double gradient){
-    blueScale = new distributeErf<wrkInfo::dataType, dstInfo::dataType> (  gradient, center, wrkType((srcInfo::max - srcInfo::min) * RMin[2]), wrkType((srcInfo::max - srcInfo::min) * (RMin[2]+RRange[2])), dstType(dstInfo::min), dstType(dstInfo::max));
+    blueScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> (  gradient, center, sWrkType((srcInfo::max - srcInfo::min) * RMin[2]), sWrkType((srcInfo::max - srcInfo::min) * (RMax[2])), dstType(dstInfo::min), dstType(dstInfo::max));
 };
 
 template<int src_t, int dst_t> cv::RGB2Rot_int<src_t, dst_t>::RGB2Rot_int(const int srcBlueIdx, const int dstBlueIdx, const double theta, cv::Vec<double, 3> newG, cv::Vec<double, 3> newC){
@@ -4908,20 +4908,48 @@ template<int src_t, int dst_t> cv::RGB2Rot_int<src_t, dst_t>::RGB2Rot_int(const 
 
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::init(){
     indxA = 0; indxB = 1; indxC = 2;
+    dstRGBIndices[0] = 0; dstRGBIndices[1] = 1; dstRGBIndices[2] = 2; // indices for the destination 'RGB' channels
+    srcRGBIndices[0] = 0; srcRGBIndices[1] = 1; srcRGBIndices[2] = 2; // indices for the source RGB channels
 
-    for(int i = 0; i < dstInfo::channels; i++){
-        for(int j = 0; j < srcInfo::channels; j++){
+
+    for(int i = 0; i < 3; i++){ // 3 = dstInfo::channels
+        for(int j = 0; j < 3; j++){ // 3 = srcInfo::channels
             if (j==i) {
                 fR(i,j) = 1;
+                rR(i,j) = 1.0;
+                qfR[i][j] = 1;
             }else{
-                fR(i,j) = 0;// Dont add the alpha channel to the color mix.
+                fR(i,j) = 0;
+                rR(i,j) = 0.0;
+                qfR[i][j] = 0;// Dont add the alpha channel to the color mix.
             }
         }
     }
 
-    RMin[0] = srcInfo::min; RMax[0] = srcInfo::min; RRange[0] = srcInfo::max - srcInfo::min;
+    RMin[0] = srcInfo::min; RMax[0] = srcInfo::max; RRange[0] = srcInfo::max - srcInfo::min;
     RMin[1] = srcInfo::min; RMax[1] = srcInfo::max; RRange[1] = srcInfo::max - srcInfo::min;
     RMin[2] = srcInfo::min; RMax[2] = srcInfo::max; RRange[2] = srcInfo::max - srcInfo::min;
+
+    qC_wrk[0] = (srcInfo::min+srcInfo::max)/2; uC_wrk[0] = 0.5;
+    qC_wrk[1] = (srcInfo::min+srcInfo::max)/2; uC_wrk[1] = 0.5;
+    qC_wrk[2] = (srcInfo::min+srcInfo::max)/2; uC_wrk[2] = 0.5;
+
+    qC_src[0] = (srcInfo::min+srcInfo::max)/2; uC_src[0] = 0.5;
+    qC_src[1] = (srcInfo::min+srcInfo::max)/2; uC_src[1] = 0.5;
+    qC_src[2] = (srcInfo::min+srcInfo::max)/2; uC_src[2] = 0.5;
+
+    uG[0] = 0.5;
+    uG[1] = 0.5;
+    uG[2] = 0.5;
+
+    rRScale[0] = 1.0; nRScale[0] = 1.0; fRScale[0] = 1.0;
+    rRScale[1] = 1.0; nRScale[1] = 1.0; fRScale[1] = 1.0;
+    rRScale[2] = 1.0; nRScale[2] = 1.0; fRScale[2] = 1.0;
+
+    for(int i = 0; i < dstInfo::channels; i++){
+        uRRange[i] = 1.0; uRMin[i] = 0.0; uRMax[i] = 1.0; // The range info for the result of the transformed space.
+    }
+
 };
 template<int src_t, int dst_t> cv::RGB2Rot_int<src_t, dst_t>::RGB2Rot_int(){
     init();
