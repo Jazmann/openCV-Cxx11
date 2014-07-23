@@ -16,6 +16,9 @@
 
 template<int t> struct cv_Data_Type{
     using type = unsigned char;
+    using uType = unsigned char;
+    using sType = char;
+    const bool sign = 0;
     const static int dataType = t;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(t);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(t);
@@ -24,7 +27,10 @@ template<int t> struct cv_Data_Type{
 
 };
 template<> struct cv_Data_Type<CV_8U>{
-    using type = CV_8U_TYPE;
+    using type  = CV_8U_TYPE;
+    using uType = CV_8U_TYPE;
+    using sType = CV_8S_TYPE;
+    const bool sign = 0;
     const static int dataType = CV_8U;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_8U);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_8U);
@@ -33,7 +39,10 @@ template<> struct cv_Data_Type<CV_8U>{
     const char* fmt = "hhu";
 };
 template<> struct cv_Data_Type<CV_8S>{
-    using type = CV_8S_TYPE;
+    using type  = CV_8S_TYPE;
+    using uType = CV_8U_TYPE;
+    using sType = CV_8S_TYPE;
+    const bool sign = 1;
     const static int dataType = CV_8S;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_8S);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_8S);
@@ -42,7 +51,10 @@ template<> struct cv_Data_Type<CV_8S>{
     const char* fmt = "hhi";
 };
 template<> struct cv_Data_Type<CV_16U>{
-    using type = CV_16U_TYPE;
+    using type  = CV_16U_TYPE;
+    using uType = CV_16U_TYPE;
+    using sType = CV_16S_TYPE;
+    const bool sign = 0;
     const static int dataType = CV_16U;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_16U);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_16U);
@@ -51,7 +63,10 @@ template<> struct cv_Data_Type<CV_16U>{
     const char* fmt = "hu";
 };
 template<> struct cv_Data_Type<CV_16S>{
-    using type = CV_16S_TYPE;
+    using type  = CV_16S_TYPE;
+    using uType = CV_16U_TYPE;
+    using sType = CV_16S_TYPE;
+    const bool sign = 1;
     const static int dataType = CV_16S;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_16S);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_16S);
@@ -60,7 +75,10 @@ template<> struct cv_Data_Type<CV_16S>{
     const char* fmt = "hi";
 };
 template<> struct cv_Data_Type<CV_32U>{
-    using type = CV_32U_TYPE;
+    using type  = CV_32U_TYPE;
+    using uType = CV_32U_TYPE;
+    using sType = CV_32S_TYPE;
+    const bool sign = 0;
     const static int dataType = CV_32U;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_32U);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_32U);
@@ -69,7 +87,10 @@ template<> struct cv_Data_Type<CV_32U>{
     const char* fmt = "u";
 };
 template<> struct cv_Data_Type<CV_32S>{
-    using type = CV_32S_TYPE;
+    using type  = CV_32S_TYPE;
+    using uType = CV_32U_TYPE;
+    using sType = CV_32S_TYPE;
+    const bool sign = 1;
     const static int dataType = CV_32S;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_32S);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_32S);
@@ -78,7 +99,10 @@ template<> struct cv_Data_Type<CV_32S>{
     const char* fmt = "i";
 };
 template<> struct cv_Data_Type<CV_64U>{
-    using type = CV_64U_TYPE;
+    using type  = CV_64U_TYPE;
+    using uType = CV_64U_TYPE;
+    using sType = CV_64S_TYPE;
+    const bool sign = 0;
     const static int dataType = CV_64U;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_64U);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_64U);
@@ -87,7 +111,10 @@ template<> struct cv_Data_Type<CV_64U>{
     const char* fmt = "llu";
 };
 template<> struct cv_Data_Type<CV_64S>{
-    using type = CV_64S_TYPE;
+    using type  = CV_64S_TYPE;
+    using uType = CV_64U_TYPE;
+    using sType = CV_64S_TYPE;
+    const bool sign = 1;
     const static int dataType = CV_64S;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_64S);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_64S);
@@ -96,7 +123,10 @@ template<> struct cv_Data_Type<CV_64S>{
     const char* fmt = "lli";
 };
 template<> struct cv_Data_Type<CV_32F>{
-    using type = CV_32F_TYPE;
+    using type  = CV_32F_TYPE;
+    using uType = CV_32F_TYPE;
+    using sType = CV_32F_TYPE;
+    const bool sign = 1;
     const static int dataType = CV_32F;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_32F);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_32F);
@@ -105,7 +135,10 @@ template<> struct cv_Data_Type<CV_32F>{
     const char* fmt = "f";
 };
 template<> struct cv_Data_Type<CV_64F>{
-    using type = CV_64F_TYPE;
+    using type  = CV_64F_TYPE;
+    using uType = CV_64F_TYPE;
+    using sType = CV_64F_TYPE;
+    const bool sign = 1;
     const static int dataType = CV_64F;
     const static int bitDepth  = CV_MAT_DEPTH_BITS(CV_64F);
     const static int byteDepth = CV_MAT_DEPTH_BYTES(CV_64F);
