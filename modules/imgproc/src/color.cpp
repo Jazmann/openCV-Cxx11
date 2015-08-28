@@ -5104,9 +5104,9 @@ template<int src_t, int dst_t> void cv::RGB2Rot<src_t, dst_t>::setTransformFromA
     double uAL[3] = {1.0, \
         2. * std::cos(CV_PI/6. - std::fmod(theta - CV_PI/6., CV_PI/3.)), \
         2. * std::cos(CV_PI/6. - std::fmod(theta,  CV_PI/3.))\
-    }
+    };
 
-    double uAxisLength[3] = {std::sqrt(3.0), Sqrt_2_3 * uAL[1], Sqrt_2_3 * uAL[2]}
+    double uAxisLength[3] = {std::sqrt(3.0), Sqrt_2_3 * uAL[1], Sqrt_2_3 * uAL[2]};
 
     uT = cv::Matx<double, 3, 3>( \
             0.3333333333333333,      0.3333333333333333,  0.3333333333333333, \
@@ -5126,8 +5126,12 @@ template<int src_t, int dst_t> void cv::RGB2Rot<src_t, dst_t>::setTransformFromA
     double rRange = std::pow(2,nBits);
     double newTheta = adjustTheta(theta,nBits);
 
-    double Cos      =    std::cos(newTheta), CosPlus  =    std::cos(CV_PI/6. + newTheta), CosMinus =    std::cos(CV_PI/6. - newTheta);
-    double Sin      =    std::sin(newTheta), SinPlus  =    std::sin(CV_PI/6. + newTheta), SinMinus =    std::sin(CV_PI/6. - newTheta);
+    Cos      =    std::cos(newTheta);
+    CosPlus  =    std::cos(CV_PI/6. + newTheta);
+    CosMinus =    std::cos(CV_PI/6. - newTheta);
+    Sin      =    std::sin(newTheta);
+    SinPlus  =    std::sin(CV_PI/6. + newTheta);
+    SinMinus =    std::sin(CV_PI/6. - newTheta);
     double Csc      = 1./std::sin(newTheta), CscPlus  = 1./std::sin(CV_PI/6. + newTheta), CscMinus = 1./std::sin(CV_PI/6. - newTheta);
     double Sec      = 1./std::cos(newTheta), SecPlus  = 1./std::cos(CV_PI/6. + newTheta), SecMinus = 1./std::cos(CV_PI/6. - newTheta);
 
