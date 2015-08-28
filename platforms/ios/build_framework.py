@@ -54,8 +54,8 @@ def build_xcode(srcroot, buildroot, target, arch):
         if os.path.isfile(wlib):
             os.remove(wlib)
 
-    os.system("xcodebuild IPHONEOS_DEPLOYMENT_TARGET=7.0 -parallelizeTargets ARCHS=%s -jobs 8 -sdk %s -configuration " + build_type + " -target ALL_BUILD" % (arch, target.lower()))
-    os.system("xcodebuild IPHONEOS_DEPLOYMENT_TARGET=7.0 ARCHS=%s -sdk %s -configuration " + build_type + " -target install install" % (arch, target.lower()))
+    os.system("xcodebuild IPHONEOS_DEPLOYMENT_TARGET=7.0 -parallelizeTargets ARCHS=%s -jobs 8 -sdk %s -configuration %s -target ALL_BUILD" % (arch, target.lower(), build_type))
+    os.system("xcodebuild IPHONEOS_DEPLOYMENT_TARGET=7.0 ARCHS=%s -sdk %s -configuration %s -target install install" % (arch, target.lower(), build_type))
     os.chdir(currdir)
 
 
@@ -113,8 +113,8 @@ def build_framework(srcroot, dstroot):
 
     targets = ["iPhoneOS"]
     archs = ["armv7"]
-    #    targets = ["iPhoneOS", "iPhoneOS", "iPhoneOS", "iPhoneSimulator", "iPhoneSimulator"]
-    #    archs = ["armv7", "armv7s", "arm64", "i386", "x86_64"]
+#    targets = ["iPhoneOS", "iPhoneOS", "iPhoneOS", "iPhoneSimulator", "iPhoneSimulator"]
+#    archs = ["armv7", "armv7s", "arm64", "i386", "x86_64"]
     for i in range(len(targets)):
         build_xcode(srcroot, os.path.join(dstroot, "build"), targets[i], archs[i])
         build_opencv(srcroot, os.path.join(dstroot, "build"), targets[i], archs[i])

@@ -279,26 +279,30 @@ template<int src_t, int dst_t> distributeErfParameters<src_t, dst_t>::distribute
         dUnitGrad[0] = shift + scale * erf( g * (sUnitGrad[0] - c) / sRange);
         dUnitGrad[1] = shift + scale * erf( g * (sUnitGrad[1] - c) / sRange);
         linearConstant = dUnitGrad[0] - sUnitGrad[0];
-        shiftednErfConstant = sUnitGrad[1] + dUnitGrad[0] - sUnitGrad[0] - dUnitGrad[1];
-        dMaxShifted = (dMax + shiftednErfConstant);
+        shiftedErfConstant = sUnitGrad[1] + dUnitGrad[0] - sUnitGrad[0] - dUnitGrad[1];
+        dMaxShifted = (dMax + shiftedErfConstant);
     };
 
 
-template<int src_t, int dst_t> distributeErfParameters<src_t, dst_t>::distributeErfParameters(double _g, double _uC, typename distributeErfParameters::srcType _sMin, typename distributeErfParameters::srcType _sMax, typename distributeErfParameters::dstType _dMin, typename distributeErfParameters::dstType _dMax): uC(_uC), g(_g), sMin(_sMin), sMax(_sMax), dMin(_dMin), dMax(_dMax)
+template<int src_t, int dst_t> distributeErfParameters<src_t, dst_t>::distributeErfParameters(double _g, double _uC, \
+    typename distributeErfParameters::srcType _sMin, typename distributeErfParameters::srcType _sMax, \
+    typename distributeErfParameters::dstType _dMin, typename distributeErfParameters::dstType _dMax \
+    ): sMin(_sMin), sMax(_sMax), dMin(_dMin), dMax(_dMax), uC(_uC), g(_g)
     {
-        CV_Assert((int)sMin <= (int)c && (int)c <= (int)sMax && (int)dMin <= (int)dMax);
+        CV_Assert((int)sMin <= (int)sMax && (int)dMin <= (int)dMax);
+        CV_Assert(0.0 <= uC && uC <= 1.0);
         sRange = (sMax - sMin);
         dRange = (dMax - dMin);
-        c = srcType(uC * sRange) + sMin;
+        c = srcType( (uC * sMax - uC * sMin)) + sMin;
 
         ErfA = erf(g * uC);
-        ErfB = erf((g*(1 - uC)));
+        ErfB = erf((g*(1.0 - uC)));
         ErfAB = ErfB + ErfA;
         shift = dstType(dMin + dRange * ErfA / ErfAB);
         scale = double(dRange) / ErfAB;
 
-        sUnitGrad[0] = std::floor(c - (sRange * std::sqrt(std::log((2*dRange * g)/(ErfAB  * std::sqrt(CV_PI) * sRange))))/g);
-        sUnitGrad[1] = std::ceil( c + (sRange * sqrt(log((2*dRange * g)/(ErfAB * std::sqrt(CV_PI) * sRange))))/g);
+        sUnitGrad[0] = std::floor(c - (sRange * std::sqrt(std::log((2*sRange * g)/(ErfAB * std::sqrt(CV_PI) * dRange))))/g);
+        sUnitGrad[1] = std::ceil( c + (sRange * std::sqrt(std::log((2*sRange * g)/(ErfAB * std::sqrt(CV_PI) * dRange))))/g);
         ull = 1./dRange; uul = 1. - ull; // double(dRange - 1)/dRange;
         sLowHigh[0] = std::floor(c + sRange * erfinv(ull*ErfB-uul*ErfA)/g);
         sLowHigh[1] = std::ceil( c - sRange * erfinv(ull*ErfA-uul*ErfB)/g);
@@ -313,8 +317,24 @@ template<int src_t, int dst_t> distributeErfParameters<src_t, dst_t>::distribute
         dUnitGrad[0] = shift + scale * erf( g * (sUnitGrad[0] - c) / sRange);
         dUnitGrad[1] = shift + scale * erf( g * (sUnitGrad[1] - c) / sRange);
         linearConstant = dUnitGrad[0] - sUnitGrad[0];
-        shiftednErfConstant = sUnitGrad[1] + dUnitGrad[0] - sUnitGrad[0] - dUnitGrad[1];
-        dMaxShifted = (dMax + shiftednErfConstant);
+        shiftedErfConstant = sUnitGrad[1] + dUnitGrad[0] - sUnitGrad[0] - dUnitGrad[1];
+        dMaxShifted = (dMax + shiftedErfConstant);
+        if (useLookUpTable) {
+            // dst = LUTLow[src - par.sLowHigh[0] - 1]
+            int LUTLowElems = sUnitGrad[0] - sLowHigh[0];
+            LUTLow = new dstType[LUTLowElems];
+            for (int i=0; i<LUTLowElems; i++) {
+                int src = i + sLowHigh[0] + 1;
+                LUTLow[i] =  dstType(shift + scale * erf(g*(src - c), double(sRange)));
+            }
+            // dst = LUTHigh[src - par.sUnitGrad[1] - 1]
+            int LUTHighElems = sLowHigh[1] - sUnitGrad[1] -1 ;
+            LUTHigh = new dstType[LUTHighElems];
+            for (int i=0; i<LUTHighElems; i++) {
+                int src = i + sUnitGrad[1] + 1;
+                LUTHigh[i] =  dstType(shift - scale * erf(g*(c - src), double(sRange)) + shiftedErfConstant);
+            }
+        }
     };
 
 template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf()
@@ -325,11 +345,14 @@ template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf(distri
     {
         par = _par;    };
 
-template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf(double _g, typename distributeErf::srcType _c, typename distributeErf::srcType sMin, typename distributeErf::srcType sMax, typename distributeErf::dstType dMin, typename distributeErf::dstType dMax):par(_g,_c,sMin,sMax,dMin,dMax)
+template<int src_t, int dst_t> distributeErf<src_t, dst_t>::distributeErf(\
+    double _g, double _uC, \
+    typename distributeErf::srcType sMin, typename distributeErf::srcType sMax, \
+    typename distributeErf::dstType dMin, typename distributeErf::dstType dMax):par(_g,_uC,sMin,sMax,dMin,dMax)
     {
-        CV_Assert((int)sMin <= (int)_c && (int)_c <= (int)sMax && (int)dMin <= (int)dMax);
+        CV_Assert((int)sMin <= (int)sMax && (int)dMin <= (int)dMax);
+        CV_Assert(0.0 <= _uC && _uC <= 1.0);
     };
-
 template<int src_t, int dst_t>  void distributeErf<src_t, dst_t>::operator()(const typename distributeErf::srcType src, typename distributeErf::dstType &dst)
     {
         if(src >= par.c){
@@ -343,28 +366,47 @@ template<int src_t, int dst_t>  void distributeErf<src_t, dst_t>::operator()(con
 
 template<int src_t, int dst_t> distributeErfCompact<src_t, dst_t>::distributeErfCompact(distributeErfParameters<src_t, dst_t> _par)
     {
-        par = _par;    };
-template<int src_t, int dst_t> distributeErfCompact<src_t, dst_t>::distributeErfCompact(double _g, typename distributeErfCompact::srcType _c, typename distributeErfCompact::srcType sMin, typename distributeErfCompact::srcType sMax, typename distributeErfCompact::dstType dMin, typename distributeErfCompact::dstType dMax): par(_g,_c,sMin,sMax,dMin,dMax)
+        par = _par;
+    };
+template<int src_t, int dst_t> distributeErfCompact<src_t, dst_t>::distributeErfCompact(\
+    double _g, double _uC, \
+    typename distributeErfCompact::srcType sMin, typename distributeErfCompact::srcType sMax, \
+    typename distributeErfCompact::dstType dMin, typename distributeErfCompact::dstType dMax): par(_g,_uC,sMin,sMax,dMin,dMax)
     {
-        CV_Assert((int)sMin <= (int)_c && (int)_c <= (int)sMax && (int)dMin <= (int)dMax);    };
-
+        CV_Assert((int)sMin <= (int)sMax && (int)dMin <= (int)dMax);
+        CV_Assert(0.0 <= _uC && _uC <= 1.0);
+    };
 template<int src_t, int dst_t>  void distributeErfCompact<src_t, dst_t>::operator()(const typename distributeErfCompact::srcType src, typename distributeErfCompact::dstType &dst)
     {
         // 5 Region code : constant - erf - linear - erf - constant
         // Assumes that c is in the linear region.
-        if(src <= par.sUnitGrad[1]){
-            if(src > par.sLowHigh[1]){
-                dst = dstType(par.shift + par.scale * erf(par.g*(src - par.c), double(par.sRange)));
+        if(src <= par.sUnitGrad[0]){
+            if(src > par.sLowHigh[0]){
+// src in {par.sLowHigh[0]+1 .. par.sUnitGrad[0]}
+                if (par.useLookUpTable) {
+                    dst = par.LUTLow[src - par.sLowHigh[0] - 1];
+                }else{
+                    dst = dstType(par.shift + par.scale * erf(par.g*(src - par.c), double(par.sRange)));
+                }
             }else{
+// src in {srcMin .. par.sLowHigh[0]}
                 dst = par.dMin;
             }
-        }else if(src <= par.sUnitGrad[2]){
+        }else if(src <= par.sUnitGrad[1]){
+// src in {par.sUnitGrad[0] +1 .. par.sUnitGrad[1]}
             dst = dstType(src + par.linearConstant);
         }else{
-            if(src < par.sLowHigh[2]){
-                dst = dstType(par.shift - par.scale * erf(par.g*(par.c - src), double(par.sRange)) + par.shiftedErfConstant);
+            if(src < par.sLowHigh[1]){
+// src in {par.sUnitGrad[1] +1 .. par.sLowHigh[1]-1}
+                if (par.useLookUpTable) {
+                    dst = par.LUTHigh[src - par.sUnitGrad[1] - 1];
+                }else{
+                    dst = dstType(par.shift - par.scale * erf(par.g*(par.c - src), double(par.sRange)) + par.shiftedErfConstant);
+                }
             }else{
+// src in {par.sLowHigh[1] .. srcMax}
                 dst = par.dMax;
+
             }
         }
 
@@ -379,11 +421,13 @@ template<int src_t, int dst_t> distributeLinear<src_t, dst_t>::distributeLinear(
     {
         par = _par;
     };
-
-template<int src_t, int dst_t> distributeLinear<src_t, dst_t>::distributeLinear(double _g, double _c, typename distributeLinear::srcType sMin, typename distributeLinear::srcType sMax, typename distributeLinear::dstType dMin, typename distributeLinear::dstType dMax): par(_g,_c,sMin,sMax,dMin,dMax)    {
-        CV_Assert((int)sMin <= (int)c && (int)c <= (int)sMax && (int)dMin <= (int)sMax);
+template<int src_t, int dst_t> distributeLinear<src_t, dst_t>::distributeLinear(double _g, double _uC, \
+    typename distributeLinear::srcType sMin, typename distributeLinear::srcType sMax, \
+    typename distributeLinear::dstType dMin, typename distributeLinear::dstType dMax): par(_g,_uC,sMin,sMax,dMin,dMax)
+    {
+        CV_Assert((int)sMin <= (int)sMax && (int)dMin <= (int)dMax);
+        CV_Assert(0.0 <= _uC && _uC <= 1.0);
     };
-
 template<int src_t, int dst_t>  void distributeLinear<src_t, dst_t>::operator()(const typename distributeLinear::srcType src, typename distributeLinear::dstType dst) const
     {
         if(src <= par.sLowHigh[0]){
@@ -396,9 +440,14 @@ template<int src_t, int dst_t>  void distributeLinear<src_t, dst_t>::operator()(
     };
 
 
-
-template<int src_t, int dst_t> distributePartition<src_t, dst_t>::distributePartition(typename distributePartition::srcType _sMinCutoff, typename distributePartition::srcType _sMaxCutoff, typename distributePartition::srcType _sMin, typename distributePartition::srcType _sMax, typename distributePartition::dstType _dMin, typename distributePartition::dstType _dMax):sMinCutoff(_sMinCutoff), sMaxCutoff(_sMaxCutoff)    {
-        CV_Assert((int)_sMin <= (int)sMinCutoff && (int)sMinCutoff <= (int)_sMax && (int)_sMin <= (int)sMaxCutoff && (int)sMaxCutoff <= (int)_sMax && (int)_dMin <= (int)_dMax);
+template<int src_t, int dst_t> distributePartition<src_t, dst_t>::distributePartition(\
+    typename distributePartition::srcType _sMinCutoff, typename distributePartition::srcType _sMaxCutoff, \
+    typename distributePartition::srcType _sMin, typename distributePartition::srcType _sMax, \
+    typename distributePartition::dstType _dMin, typename distributePartition::dstType _dMax ):sMinCutoff(_sMinCutoff), sMaxCutoff(_sMaxCutoff)
+    {
+        CV_Assert((int)_sMin <= (int)sMinCutoff && (int)sMinCutoff <= (int)_sMax);
+        CV_Assert((int)_sMin <= (int)sMaxCutoff && (int)sMaxCutoff <= (int)_sMax);
+        CV_Assert((int)_dMin <= (int)_dMax);
     };
 
 template<int src_t, int dst_t>  void distributePartition<src_t, dst_t>::operator()(const typename distributePartition::srcType src, typename distributePartition::dstType &dst)
@@ -408,7 +457,6 @@ template<int src_t, int dst_t>  void distributePartition<src_t, dst_t>::operator
         }else{
             dst = 0;
         }
-
     };
 
 // computes cubic spline coefficients for a function: (xi=i, yi=f[i]), i=0..n
@@ -4776,9 +4824,9 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
                                           sWrkType(rRange/2.), sWrkType(-(rRange*Cos*CscPlus)/2.), sWrkType( (rRange*CscPlus*SinMinus)/2.),\
                                           sWrkType(rRange/2.), sWrkType( (rRange*Sin*SecPlus)/2.), sWrkType(-(rRange*SecPlus*CosMinus)/2.)
                                           );
-            RRange[0] =  wrkType(srcInfo::max) * wrkType(3);                           RMin[0] = 0;                           RMax[0] = RRange[0];
-            RRange[1] =  wrkType(srcInfo::max) * wrkType(rRange * CscPlus * Cos);      RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
-            RRange[2] =  wrkType(srcInfo::max) * wrkType(rRange * SecPlus * CosMinus); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
+            RRange[0] =  wrkType(srcInfo::max - srcInfo::min) * wrkType(3);                           RMin[0] = 0;                           RMax[0] = RRange[0];
+            RRange[1] =  wrkType(srcInfo::max - srcInfo::min) * wrkType(rRange * CscPlus * Cos);      RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
+            RRange[2] =  wrkType(srcInfo::max - srcInfo::min) * wrkType(rRange * SecPlus * CosMinus); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
             break;
         case 1:
             fRScale = Vec<double, 3>(1,(2*Cos)/rRange,(-2*Sin)/rRange);
@@ -4787,9 +4835,9 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
                                           sWrkType(-(rRange*Sec*SinPlus)/2.), sWrkType(rRange/2.), sWrkType(-(rRange*Sec*SinMinus)/2.),\
                                           sWrkType( (rRange*Csc*CosPlus)/2.), sWrkType(rRange/2.), sWrkType(-(rRange*Csc*CosMinus)/2.)
                                           );
-            RRange[0] = wrkType(srcInfo::max) * wrkType(3);                       RMin[0] = 0;                           RMax[0] = RRange[0];
-            RRange[1] = wrkType(srcInfo::max) * wrkType(rRange * SinPlus  * Sec); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
-            RRange[2] = wrkType(srcInfo::max) * wrkType(rRange * CosMinus * Csc); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
+            RRange[0] = wrkType(srcInfo::max - srcInfo::min) * wrkType(3);                       RMin[0] = 0;                           RMax[0] = RRange[0];
+            RRange[1] = wrkType(srcInfo::max - srcInfo::min) * wrkType(rRange * SinPlus  * Sec); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
+            RRange[2] = wrkType(srcInfo::max - srcInfo::min) * wrkType(rRange * CosMinus * Csc); RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
 
 
             break;
@@ -4801,9 +4849,9 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setTransformF
                                           sWrkType(-(rRange*SecMinus*CosPlus)/2.), sWrkType(-(rRange*Sin*SecMinus)/2.), sWrkType(rRange/2.)
                                           );
 
-            RRange[0] = wrkType(srcInfo::max) * wrkType( 3 );                              RMin[0] = 0;                           RMax[0] = RRange[0];
-            RRange[1] = wrkType(srcInfo::max) * wrkType(-1 * rRange * CscMinus * SinPlus); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
-            RRange[2] = wrkType(srcInfo::max) * wrkType(     rRange * SecMinus * Sin);     RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
+            RRange[0] = wrkType(srcInfo::max - srcInfo::min) * wrkType( 3 );                              RMin[0] = 0;                           RMax[0] = RRange[0];
+            RRange[1] = wrkType(srcInfo::max - srcInfo::min) * wrkType(-1 * rRange * CscMinus * SinPlus); RMin[1] = sWrkType(-1 * RRange[1]/2);  RMax[1] = RRange[1]/2;
+            RRange[2] = wrkType(srcInfo::max - srcInfo::min) * wrkType(     rRange * SecMinus * Sin);     RMin[2] = sWrkType(-1 * RRange[2]/2);  RMax[2] = RRange[2]/2;
 
             break;
         default:
@@ -4863,22 +4911,26 @@ template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setG(Vec<doub
     uG[0] = newG(indxA); uG[1] = newG(indxB); uG[2] = newG(indxC);
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setRedDistributionErf(){
-    setRedDistributionErf(qC_wrk[dstRGBIndices[0]],uG[dstRGBIndices[0]]);
+    setRedDistributionErf(uC_wrk[dstRGBIndices[0]],uG[dstRGBIndices[0]]);
 };
-template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setRedDistributionErf(  int center, double gradient){
-    redScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> (   gradient, center, sWrkType((srcInfo::max - srcInfo::min) * RMin[0]), sWrkType((srcInfo::max - srcInfo::min) * (RMax[0])), dstType(dstInfo::min), dstType(dstInfo::max));
+template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setRedDistributionErf(  double center, double gradient){
+redParam = *new distributeErfParameters<sWrkInfo::dataType, dstInfo::dataType>(gradient, center, RMin[0], RMax[0], dstType(dstInfo::min), dstType(dstInfo::max));
+redScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> ( gradient, center, RMin[0], RMax[0], dstType(dstInfo::min), dstType(dstInfo::max));
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setGreenDistributionErf(){
-    setGreenDistributionErf(qC_wrk[dstRGBIndices[1]],uG[dstRGBIndices[1]]);
+    setGreenDistributionErf(uC_wrk[dstRGBIndices[1]],uG[dstRGBIndices[1]]);
 };
-template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setGreenDistributionErf(int center, double gradient){
-    greenScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> ( gradient, center, sWrkType((srcInfo::max - srcInfo::min) * RMin[1]), sWrkType((srcInfo::max - srcInfo::min) * (RMax[1])), dstType(dstInfo::min), dstType(dstInfo::max));
+template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setGreenDistributionErf(double center, double gradient){
+greenParam = *new distributeErfParameters<sWrkInfo::dataType, dstInfo::dataType>(gradient, center, RMin[1], RMax[1], dstType(dstInfo::min), dstType(dstInfo::max));
+
+greenScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> ( gradient, center, RMin[1], RMax[1], dstType(dstInfo::min), dstType(dstInfo::max));
 };
 template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setBlueDistributionErf(){
-    setBlueDistributionErf(qC_wrk[dstRGBIndices[2]],uG[dstRGBIndices[2]]);
+    setBlueDistributionErf(uC_wrk[dstRGBIndices[2]],uG[dstRGBIndices[2]]);
 };
-template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setBlueDistributionErf( int center, double gradient){
-    blueScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> (  gradient, center, sWrkType((srcInfo::max - srcInfo::min) * RMin[2]), sWrkType((srcInfo::max - srcInfo::min) * (RMax[2])), dstType(dstInfo::min), dstType(dstInfo::max));
+template<int src_t, int dst_t> void cv::RGB2Rot_int<src_t, dst_t>::setBlueDistributionErf( double center, double gradient){
+blueParam = *new distributeErfParameters<sWrkInfo::dataType, dstInfo::dataType>(gradient, center, RMin[2], RMax[2], dstType(dstInfo::min), dstType(dstInfo::max));
+blueScale = new distributeErf<sWrkInfo::dataType, dstInfo::dataType> (  gradient, center, RMin[2], RMax[2], dstType(dstInfo::min), dstType(dstInfo::max));
 };
 
 template<int src_t, int dst_t> cv::RGB2Rot_int<src_t, dst_t>::RGB2Rot_int(const int srcBlueIdx, const int dstBlueIdx, const double theta, cv::Vec<double, 3> newG, cv::Vec<double, 3> newC){
@@ -5044,39 +5096,45 @@ template<int src_t, int dst_t> void cv::RGB2Rot<src_t, dst_t>::setTransformFromA
     // values outside the preserve range are vulnerable to truncation.
 
     // nT is scaled to give ranges 0:1, -0.5:0.5 -0.5:0.5 with a unit RGB cube.
+    double Cos      = std::cos(theta), CosPlus  = std::cos(CV_PI/6. + theta), CosMinus = std::cos(CV_PI/6. - theta);
+    double Sin      = std::sin(theta), SinPlus  = std::sin(CV_PI/6. + theta), SinMinus = std::sin(CV_PI/6. - theta);
+
+    double Sqrt_2_3 = std::sqrt(0.6666666666666666);
+
+    double uAL[3] = {1.0, \
+        2. * std::cos(CV_PI/6. - std::fmod(theta - CV_PI/6., CV_PI/3.)), \
+        2. * std::cos(CV_PI/6. - std::fmod(theta,  CV_PI/3.))\
+    }
+
+    double uAxisLength[3] = {std::sqrt(3.0), Sqrt_2_3 * uAL[1], Sqrt_2_3 * uAL[2]}
+
     uT = cv::Matx<double, 3, 3>( \
-            0.3333333333333333,0.3333333333333333,0.3333333333333333, \
-            ((-1.0/std::cos(theta - (CV_PI*std::floor(0.5 + (3*theta)/CV_PI))/3.))*( std::cos(theta) + std::sqrt(3)*std::sin(theta)))/4.,\
-            (      std::cos(theta)*(1.0/std::cos(theta - (CV_PI*std::floor(0.5 + (3*theta)/CV_PI))/3.)))/2.,\
-            (( 1.0/std::cos(theta - (CV_PI*std::floor(0.5 + (3*theta)/CV_PI))/3.))*(-std::cos(theta) + std::sqrt(3)*std::sin(theta)))/4.,\
-            (( 1.0/std::cos((CV_PI - 6*std::fmod(theta, CV_PI/3.))/6.))*(-(std::sqrt(3)*std::cos(theta)) + std::sin(theta)))/4.,\
-            ((-1.0/std::cos((CV_PI - 6*std::fmod(theta, CV_PI/3.))/6.))*std::sin(theta))/2.,\
-            (( 1.0/std::cos((CV_PI - 6*std::fmod(theta, CV_PI/3.))/6.))*(std::sqrt(3)*std::cos(theta) + std::sin(theta)))/4.);
+            0.3333333333333333,      0.3333333333333333,  0.3333333333333333, \
+            (-1.0/uAL[1])*(SinPlus), ( 1.0/uAL[1])*(Cos), (-1.0/uAL[1])*(SinMinus),\
+            (-1.0/uAL[2])*(CosPlus), (-1.0/uAL[2])*(Sin), ( 1.0/uAL[2])*(CosMinus) );
+
+    uiT = cv::Matx<double, 3, 3>( \
+            1./std::sqrt(3.0), (-1.0/uAL[1])*(SinPlus),  (-1.0/uAL[2])*(CosPlus),\
+            1./std::sqrt(3.0), ( 1.0/uAL[1])*(Cos),      (-1.0/uAL[2])*(Sin),    \
+            1./std::sqrt(3.0), (-1.0/uAL[1])*(SinMinus), ( 1.0/uAL[2])*(CosMinus) );
+
+    uTRange[0] = 1.0; uTMin[0] =  0.0; uTMax[0] = 1.0;
+    uTRange[1] = 1.0; uTMin[1] = -0.5; uTMax[1] = 0.5;
+    uTRange[2] = 1.0; uTMin[2] = -0.5; uTMax[2] = 0.5;
 
     int nBits = srcInfo::bitDepth -1; // The number of bits in which to store the numeric value of the matrix (-1 to account for the sign bit)
     double rRange = std::pow(2,nBits);
     double newTheta = adjustTheta(theta,nBits);
 
-    double Cos      = std::cos(newTheta);
-    double CosPlus  = std::cos(CV_PI/6. + newTheta);
-    double CosMinus = std::cos(CV_PI/6. - newTheta);
-
-    double Sin      = std::sin(newTheta);
-    double SinPlus  = std::sin(CV_PI/6. + newTheta);
-    double SinMinus = std::sin(CV_PI/6. - newTheta);
-
-    double Csc      = 1./std::sin(newTheta);
-    double CscPlus  = 1./std::sin(CV_PI/6. + newTheta);
-    double CscMinus = 1./std::sin(CV_PI/6. - newTheta);
-
-    double Sec      = 1./std::cos(newTheta);
-    double SecPlus  = 1./std::cos(CV_PI/6. + newTheta);
-    double SecMinus = 1./std::cos(CV_PI/6. - newTheta);
+    double Cos      =    std::cos(newTheta), CosPlus  =    std::cos(CV_PI/6. + newTheta), CosMinus =    std::cos(CV_PI/6. - newTheta);
+    double Sin      =    std::sin(newTheta), SinPlus  =    std::sin(CV_PI/6. + newTheta), SinMinus =    std::sin(CV_PI/6. - newTheta);
+    double Csc      = 1./std::sin(newTheta), CscPlus  = 1./std::sin(CV_PI/6. + newTheta), CscMinus = 1./std::sin(CV_PI/6. - newTheta);
+    double Sec      = 1./std::cos(newTheta), SecPlus  = 1./std::cos(CV_PI/6. + newTheta), SecMinus = 1./std::cos(CV_PI/6. - newTheta);
 
     switch (int(std::floor(6* (std::fmod(theta, CV_PI/2.))/CV_PI)))
     {
         case 0:
-            fRScale = Vec<double, 3>(1,(-2*SinPlus)/rRange,(-2*CosPlus)/rRange);
+            fRScale = Vec<double, 3>(1.,(-2.*SinPlus)/rRange,(-2.*CosPlus)/rRange);
             fR = cv::Matx<sWrkType, 3, 3>(
                                         1, 1, 1,
                                         sWrkType(rRange/2.), sWrkType(-(rRange*Cos*CscPlus)/2.), sWrkType( (rRange*CscPlus*SinMinus)/2.),
@@ -5084,7 +5142,7 @@ template<int src_t, int dst_t> void cv::RGB2Rot<src_t, dst_t>::setTransformFromA
                                         );
             break;
         case 1:
-            fRScale = Vec<double, 3>(1,(2*Cos)/rRange,(-2*Sin)/rRange);
+            fRScale = Vec<double, 3>(1.,(2.*Cos)/rRange,(-2.*Sin)/rRange);
             fR = cv::Matx<sWrkType, 3, 3>(
                                         1, 1, 1,
                                         sWrkType(-(rRange*Sec*SinPlus)/2.), sWrkType(rRange/2.), sWrkType(-(rRange*Sec*SinMinus)/2.),
@@ -5092,7 +5150,7 @@ template<int src_t, int dst_t> void cv::RGB2Rot<src_t, dst_t>::setTransformFromA
                                         );
             break;
         case 2:
-            fRScale = Vec<double, 3>(1,(-2*SinMinus)/rRange,(2*CosMinus)/rRange);
+            fRScale = Vec<double, 3>(1.,(-2.*SinMinus)/rRange,(2.*CosMinus)/rRange);
             fR = cv::Matx<sWrkType, 3, 3>(
                                         1, 1, 1,
                                         sWrkType( (rRange*CscMinus*SinPlus)/2.), sWrkType(-(rRange*Cos*CscMinus)/2.), sWrkType(rRange/2.),
@@ -5103,22 +5161,7 @@ template<int src_t, int dst_t> void cv::RGB2Rot<src_t, dst_t>::setTransformFromA
             fR = cv::Matx<sWrkType, 3, 3>();
     }
 
-    uiT = cv::Matx<double, 3, 3>(1.,
-    (-2.*std::cos(theta - (CV_PI*std::floor(0.5 + (3.*theta)/CV_PI))/3.)*(std::cos(theta) + std::sqrt(3.)*std::sin(theta)))/3.,
-    ( 2.*std::cos((CV_PI - 6.*std::fmod(theta, CV_PI/3.))/6.)*(-(std::sqrt(3.)*std::cos(theta)) + std::sin(theta)))/3.,
-    1.,
-    ( 4.*std::cos(theta)*std::cos(theta - (CV_PI*std::floor(0.5 + (3.*theta)/CV_PI))/3.))/3.,
-    (-4.*std::cos((CV_PI - 6.*std::fmod(theta, CV_PI/3.))/6.)*std::sin(theta))/3.,
-    1.,
-    (2.*std::cos(theta - (CV_PI*std::floor(0.5 + (3.*theta)/CV_PI))/3.)*(-std::cos(theta) + std::sqrt(3.)*std::sin(theta)))/3.,
-    (2.*std::cos((CV_PI - 6.*std::fmod(theta, CV_PI/3.))/6.)*(std::sqrt(3.)*std::cos(theta) + std::sin(theta)))/3.
-    );
-
-    uTRange[0] = 1.0; uTMin[0] = 0;    uTMax[0] = 1.0;
-    uTRange[1] = 1.0; uTMin[1] = -0.5; uTMax[1] = 0.5;
-    uTRange[2] = 1.0; uTMin[2] = -0.5; uTMax[2] = 0.5;
-
-    TRange[0] = srcInfo::max; TMin[0] = 0;
+    TRange[0] = srcInfo::max;     TMin[0] =  0.0;
     TRange[1] = srcInfo::max/2.0; TMin[1] = -1.0 * srcInfo::max/2.0;
     TRange[2] = srcInfo::max/2.0; TMin[2] = -1.0 * srcInfo::max/2.0;
 

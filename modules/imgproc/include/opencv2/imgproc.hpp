@@ -482,13 +482,17 @@ template<int src_t, int dst_t> class CV_EXPORTS distributeErfParameters
         using dstInfo = cv::Data_Type<dst_t>;
         using srcType = typename cv::Data_Type<src_t>::type;
         using dstType = typename cv::Data_Type<dst_t>::type;
+        using uSrcType = typename cv::Data_Type<src_t>::uType;
+        using uDstType = typename cv::Data_Type<dst_t>::uType;
         using wrkInfo = cv::Work_Type<src_t, dst_t>;
         using wrkType = typename cv::Work_Type<src_t, dst_t>::type;
-        const srcType lookUpTableMax = 255;
-        const srcType nonLinearMin = 3; // Less than this is is not worth keeping the error function at all.
+        srcType lookUpTableMax = 255;
+        srcType nonLinearMin = 3; // Less than this is is not worth keeping the error function at all.
 
-        srcType sMin, sMax, sRange;
-        dstType dMin, dMax, dRange;
+        uSrcType sRange;
+        uDstType dRange;
+        srcType sMin, sMax;
+        dstType dMin, dMax;
         srcType c;
         double uC, g;
 
@@ -503,8 +507,9 @@ template<int src_t, int dst_t> class CV_EXPORTS distributeErfParameters
 
         dstType dUnitGrad[2];
         srcType linearConstant;
-        dstType shiftednErfConstant, dMaxShifted;
-
+        dstType shiftedErfConstant, dMaxShifted;
+        dstType* LUTLow;
+        dstType* LUTHigh;
         distributeErfParameters();
         distributeErfParameters( double _g, double _uC, srcType sMin = srcInfo::min, srcType sMax = srcInfo::max, dstType dMin = dstInfo::min, dstType dMax = dstInfo::max);
     };
@@ -534,7 +539,7 @@ template<int src_t, int dst_t>  class  CV_EXPORTS distributeErf: public depthCon
 
         distributeErf();
         distributeErf( distributeErfParameters<src_t, dst_t> par);
-        distributeErf( double _g, srcType _c, srcType sMin, srcType sMax, dstType dMin, dstType dMax);
+        distributeErf( double _g, double _uC, srcType sMin, srcType sMax, dstType dMin, dstType dMax);
         void operator()(const srcType src, dstType &dst);
     };
 
@@ -548,7 +553,7 @@ template<int src_t, int dst_t>  class  CV_EXPORTS distributeErf: public depthCon
         dstType* map; // [cv::Data_Type<src_t>::max-cv::Data_Type<src_t>::min];
         distributeErfCompact();
         distributeErfCompact( distributeErfParameters<src_t, dst_t> par);
-        distributeErfCompact( double _g, srcType _c, srcType sMin, srcType sMax, dstType dMin, dstType dMax);
+        distributeErfCompact( double _g, double _uC, srcType sMin, srcType sMax, dstType dMin, dstType dMax);
         void operator()(const srcType src, dstType &dst);
     };
 
@@ -578,7 +583,7 @@ template<int src_t, int dst_t>  class CV_EXPORTS distributeLinear: public depthC
 
         distributeLinear();
         distributeLinear( distributeErfParameters<src_t, dst_t> par);
-        distributeLinear( double _g, double _c, srcType sMin, srcType sMax, dstType dMin, dstType dMax);
+        distributeLinear( double _g, double _uC, srcType sMin, srcType sMax, dstType dMin, dstType dMax);
         void operator()(const srcType src, dstType dst) const;
     };
 
@@ -622,9 +627,9 @@ template<int src_t, int dst_t> class CV_EXPORTS colorSpaceConverter
         int dstRGBIndices[3]; // indices for the destination 'RGB' channels
         int srcRGBIndices[3]; // indices for the source RGB channels
         Vec<sWrkType, 3> qC_wrk; // The center point for the distribution function in the rotated color space
-        Vec<double, 3>  uC_wrk; // The center point for the distribution function in the rotated color space scaled to 0:1
-        Vec<srcType, 3> qC_src; // The center point for the distribution function in the source color space
-        Vec<double, 3>  uC_src; // The center point for the distribution function in the source color space scaled to 0:1
+        Vec<double, 3>   uC_wrk; // The center point for the distribution function in the rotated color space scaled to 0:1
+        Vec<srcType, 3>  qC_src; // The center point for the distribution function in the source color space
+        Vec<double, 3>   uC_src; // The center point for the distribution function in the source color space scaled to 0:1
 
         Vec<double, 3> uG; // The distribution parameter in the rotated color space scaled to 0:1
 
@@ -663,11 +668,11 @@ template<int src_t, int dst_t> class CV_EXPORTS colorSpaceConverter
         void setG(Vec<double, 3> _g);
         void setuG(Vec<double, 3> _g);
         void setRedDistributionErf();
-        void setRedDistributionErf(  int center, double gradient);
+        void setRedDistributionErf(  double center, double gradient);
         void setGreenDistributionErf();
-        void setGreenDistributionErf(int center, double gradient);
+        void setGreenDistributionErf(double center, double gradient);
         void setBlueDistributionErf();
-        void setBlueDistributionErf( int center, double gradient);
+        void setBlueDistributionErf( double center, double gradient);
 
         void operator()(const typename cv::Data_Type<src_t>::type* src, typename cv::Data_Type<dst_t>::type* dst, int n) const;
     };
